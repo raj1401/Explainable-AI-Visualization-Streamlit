@@ -25,7 +25,7 @@ def forecast_from_classifier(model, data_file):
     y_pred = model.predict(X)
 
     fig, ax = plt.subplots(figsize=(10,5))
-    xticks = dates.iloc[::len(dates)//40]
+    xticks = dates.iloc[::len(dates)//20]
     ax.plot(dates, [0.5]*len(y_pred), "--r")
     ax.scatter(dates, y_pred, s=20, label=f"Predicted values")
     ax.set_ylim(-0.5, 1.5)
@@ -59,7 +59,7 @@ def forecast_from_regressor(model, data_file):
     y_pred = model.predict(X)
 
     fig, ax = plt.subplots(figsize=(10,5))
-    xticks = dates.iloc[::len(dates)//40]
+    xticks = dates.iloc[::len(dates)//20]
     ax.plot(dates, y_pred, "--b", label=f"Predicted values")
     ax.legend(loc='upper right')
     ax.set_ylabel("Predicted Values Value")

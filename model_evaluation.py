@@ -3,6 +3,8 @@ import os
 import shap
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+import scipy.stats as stats
 from sklearn.metrics import PrecisionRecallDisplay, RocCurveDisplay, ConfusionMatrixDisplay
 from sklearn.metrics import PredictionErrorDisplay, explained_variance_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -164,19 +166,47 @@ def get_regression_time_series_predictions(df, model, random_state, test_fractio
         X, y = df.iloc[:,:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
-        target_name = df.columns[-1]
-        fig, ax = plt.subplots(figsize=(10,5))
+        # Calculating the t-statistics
+        CONFIDENCE_LEVEL = 0.95
         y_pred = model.predict(X_test)
+        residuals = np.array(y_test - y_pred)
+        residual_std = residuals.std()
 
-        x_vals = range(len(y_test))
-        x_ticks = dates.iloc[len(y_train):]
+        t_stat = stats.t.ppf((1 + CONFIDENCE_LEVEL) / 2, df=len(residuals))
+        lower_bound = y_pred - t_stat * residual_std
+        upper_bound = y_pred + t_stat * residual_std
 
-        ax.plot(x_vals, y_test, "-o", label=f"Target {target_name} values")
-        ax.plot(x_vals, y_pred, "--r", label=f"Predicted {target_name} values")
-        ax.legend()
+        # Plotting
+        target_name = df.columns[-1]
+        fig, ax = plt.subplots(figsize=(10,6))   
+
+        dates = dates.astype(str)
+        x_vals = list(dates)
+        x_vals_train = x_vals[:len(y_train)]
+        x_vals_test = x_vals[len(y_train):]
+
+        y_min = y.min()
+        y_max = y.max()
+        
+        x_ticks = dates.iloc[::len(dates)//20]
+
+        ax.plot(x_vals_train, y_train, "-o", label=f"Training {target_name} values")
+
+        ax.plot(x_vals_test, y_test, "-gx", label=f"Target {target_name} values")
+        ax.plot(x_vals_test, y_pred, "--r", label=f"Predicted {target_name} values")
+
+        ax.fill_between(x_vals_test, lower_bound, upper_bound, alpha=0.2, label=f'{CONFIDENCE_LEVEL*100}% CI')
+
+        ax.axvline(x=len(y_train), color='black', linestyle='--')
+        ax.text(0.15*len(y), y_min - 0.25*(y_max-y_min), 'Training and Validation Set', verticalalignment='center', fontsize=12)
+        ax.text(0.85*len(y), y_min - 0.25*(y_max-y_min), 'Testing Set', verticalalignment='center', fontsize=12)
+
+        ax.legend(loc="upper right")
+        
+        ax.set_ylim(bottom=y_min - 0.5*(y_max-y_min), top=y_max + 0.5*(y_max-y_min))
         ax.set_ylabel(target_name)
         ax.set_xlabel("Time Steps")
-        ax.set_xticks(x_vals)
+        ax.set_xticks(x_ticks)
         ax.set_xticklabels(x_ticks, rotation=90)
         ax.set_title(f"Model's Performance on Predicting {target_name} values \n from Selected Features")
         
