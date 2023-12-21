@@ -62,7 +62,7 @@ def forecast_from_regressor(model, data_file):
     xticks = dates.iloc[::len(dates)//20]
     ax.plot(dates, y_pred, "--b", label=f"Predicted values")
     ax.legend(loc='upper right')
-    ax.set_ylabel("Predicted Values Value")
+    ax.set_ylabel("Predicted Values")
     ax.set_xlabel("Time Steps")
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticks, rotation=90)

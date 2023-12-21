@@ -60,7 +60,8 @@ def plot_shap_heatmap(shap_vals):
 
 def plot_precision_recall(df, model, random_state, test_fraction):
     try:    
-        X, y = df.iloc[:,:-1], df.iloc[:,-1]
+        dates = df.iloc[:,0].astype(str)
+        X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
         fig, ax = plt.subplots()
@@ -74,7 +75,8 @@ def plot_precision_recall(df, model, random_state, test_fraction):
 
 def plot_roc_auc(df, model, random_state, test_fraction):
     try:    
-        X, y = df.iloc[:,:-1], df.iloc[:,-1]
+        dates = df.iloc[:,0].astype(str)
+        X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
         fig, ax = plt.subplots()
@@ -87,7 +89,8 @@ def plot_roc_auc(df, model, random_state, test_fraction):
 
 def plot_confusion_matrix(df, model, random_state, test_fraction):
     try:    
-        X, y = df.iloc[:,:-1], df.iloc[:,-1]
+        dates = df.iloc[:,0].astype(str)
+        X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
         fig, ax = plt.subplots()
@@ -99,9 +102,10 @@ def plot_confusion_matrix(df, model, random_state, test_fraction):
     except Exception as e:
         return None, e
 
-def get_classification_time_series_predictions(df, model, random_state, test_fraction, dates):
+def get_classification_time_series_predictions(df, model, random_state, test_fraction):
     try:    
-        X, y = df.iloc[:,:-1], df.iloc[:,-1]
+        dates = df.iloc[:,0].astype(str)
+        X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
         target_name = df.columns[-1]
@@ -133,7 +137,8 @@ def get_classification_time_series_predictions(df, model, random_state, test_fra
 
 def plot_prediction_error(df, model, random_state, test_fraction):
     try:    
-        X, y = df.iloc[:,:-1], df.iloc[:,-1]
+        dates = df.iloc[:,0].astype(str)
+        X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
         fig, ax = plt.subplots()
@@ -145,7 +150,8 @@ def plot_prediction_error(df, model, random_state, test_fraction):
 
 def get_regression_metrics(df, model, random_state, test_fraction):
     try:    
-        X, y = df.iloc[:,:-1], df.iloc[:,-1]
+        dates = df.iloc[:,0].astype(str)
+        X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
         test_pred = model.predict(X_test)
 
@@ -161,9 +167,10 @@ def get_regression_metrics(df, model, random_state, test_fraction):
     except Exception as e:
         return None, None, None, e
 
-def get_regression_time_series_predictions(df, model, random_state, test_fraction, dates):
+def get_regression_time_series_predictions(df, model, random_state, test_fraction):
     try:    
-        X, y = df.iloc[:,:-1], df.iloc[:,-1]
+        dates = df.iloc[:,0].astype(str)
+        X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
         # Calculating the t-statistics
@@ -180,7 +187,6 @@ def get_regression_time_series_predictions(df, model, random_state, test_fractio
         target_name = df.columns[-1]
         fig, ax = plt.subplots(figsize=(10,6))   
 
-        dates = dates.astype(str)
         x_vals = list(dates)
         x_vals_train = x_vals[:len(y_train)]
         x_vals_test = x_vals[len(y_train):]

@@ -22,22 +22,12 @@ if not os.path.exists(TEMP_DIR):
 
 # ---------- RANDOM FOREST CLASSIFIER ---------- #
 
-def create_and_search_tree_classifier(data_file, **kwargs):
+def create_and_search_tree_classifier(df, **kwargs):
     """
     This function performs 5-fold cross-validation and randomly searches over parameters
     to find out optimum parameters for the random forest classifier and returns
     the optimum parameters and models
     """
-    if data_file is not None:
-        try:
-            with NamedTemporaryFile(mode='wb', suffix=".csv", dir=TEMP_DIR, delete=False) as f:
-                f.write(data_file.read())
-            with open(f.name, 'r') as file:
-                df = pd.read_csv(file)
-        except Exception as e:
-            return
-    else:
-        return None, None
 
     base_classifier = CatBoostClassifier(loss_function="Logloss")    
 
@@ -65,7 +55,7 @@ def create_and_search_tree_classifier(data_file, **kwargs):
     best_params = random_search.best_params_
     best_model = random_search.best_estimator_
 
-    return best_params, best_model, df.iloc[:,1:], dates
+    return best_params, best_model
 
 
 def train_final_classifier(df:pd.DataFrame, **kwargs):    
@@ -74,7 +64,8 @@ def train_final_classifier(df:pd.DataFrame, **kwargs):
 
     classifier = CatBoostClassifier(**param_distributions)
 
-    X, y = df.iloc[:,:-1], df.iloc[:,-1]
+    dates = df.iloc[:,0].astype(str)
+    X, y = df.iloc[:,1:-1], df.iloc[:,-1]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=False, random_state=RANDOM_STATE)
 
     classifier.fit(X=X_train, y=y_train)
@@ -83,22 +74,12 @@ def train_final_classifier(df:pd.DataFrame, **kwargs):
 
 # ---------- RANDOM FOREST REGRESSOR ---------- #
 
-def create_and_search_tree_regressor(data_file, **kwargs):
+def create_and_search_tree_regressor(df, **kwargs):
     """
     This function performs 5-fold cross-validation and randomly searches over parameters
     to find out optimum parameters for the random forest regressor and returns
     the optimum parameters and models
     """
-    if data_file is not None:
-        try:
-            with NamedTemporaryFile(mode='wb', suffix=".csv", dir=TEMP_DIR, delete=False) as f:
-                f.write(data_file.read())
-            with open(f.name, 'r') as file:
-                df = pd.read_csv(file)
-        except Exception as e:
-            return
-    else:
-        return None, None
 
     base_regressor = CatBoostRegressor()
 
@@ -125,7 +106,7 @@ def create_and_search_tree_regressor(data_file, **kwargs):
     best_params = random_search.best_params_
     best_model = random_search.best_estimator_
 
-    return best_params, best_model, df.iloc[:,1:], dates
+    return best_params, best_model
 
 
 def train_final_regressor(df:pd.DataFrame, **kwargs):    
@@ -133,7 +114,8 @@ def train_final_regressor(df:pd.DataFrame, **kwargs):
 
     regressor = CatBoostRegressor(**param_distributions)
 
-    X, y = df.iloc[:,:-1], df.iloc[:,-1]
+    dates = df.iloc[:,0].astype(str)
+    X, y = df.iloc[:,1:-1], df.iloc[:,-1]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=False, random_state=RANDOM_STATE)
 
     regressor.fit(X=X_train, y=y_train)
