@@ -9,6 +9,7 @@ from model_creation_and_training import get_lead_lag_correlations, shift_datafra
 
 from model_evaluation import plot_precision_recall, plot_roc_auc, plot_confusion_matrix
 from model_evaluation import plot_shap_bar, plot_shap_beeswarm, plot_shap_heatmap
+from model_evaluation import get_rfe_features, get_boruta_features
 from model_evaluation import get_regression_time_series_predictions, get_classification_time_series_predictions
 from model_evaluation import plot_prediction_error, get_regression_metrics
 
@@ -30,7 +31,7 @@ if 'all_models' not in sl.session_state:
     sl.session_state.all_models = sl.session_state.classification_models + sl.session_state.regression_models
 
 if 'available_feat_select_algos' not in sl.session_state:
-    sl.session_state.available_feat_select_algos = ["SHAP", "Recursive Feature Elimination", "Baruta"]
+    sl.session_state.available_feat_select_algos = ["SHAP", "Recursive Feature Elimination", "Boruta"]
 
 if 'original_df' not in sl.session_state:
     sl.session_state.original_df = None
@@ -225,8 +226,8 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
 
     # Bar Plot
     with left_col:
-        left_col.markdown("<h3 style='text-align: center;'> Bar </h3>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_bar(shap_values)
+        left_col.markdown("<h4 style='text-align: center;'> Bar </h4>", unsafe_allow_html=True)
+        fig, err_msg = plot_shap_bar(shap_values, max_display=len(feature_data.columns))
         if fig is None:
             left_col.error(err_msg)
         else:
@@ -234,8 +235,8 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
     
     # Beeswarm Plot
     with middle_col:
-        middle_col.markdown("<h3 style='text-align: center;'> Beeswarm </h3>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_beeswarm(shap_values)
+        middle_col.markdown("<h4 style='text-align: center;'> Beeswarm </h4>", unsafe_allow_html=True)
+        fig, err_msg = plot_shap_beeswarm(shap_values, max_display=len(feature_data.columns))
         if fig is None:
             middle_col.error(err_msg)
         else:
@@ -243,12 +244,36 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
 
     # Heatmap
     with right_col:
-        right_col.markdown("<h3 style='text-align: center;'> Heatmap </h3>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_heatmap(shap_values)
+        right_col.markdown("<h4 style='text-align: center;'> Heatmap </h4>", unsafe_allow_html=True)
+        fig, err_msg = plot_shap_heatmap(shap_values, max_display=len(feature_data.columns))
         if fig is None:
             right_col.error(err_msg)
         else:
             right_col.write(fig)
+
+
+def plot_rfe_features(col, df, model):
+    with col:
+        fig, err_msg = get_rfe_features(df, model, random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE,
+                                        test_fraction=sl.session_state.TEST_FRACTION)
+        if fig is None:
+            col.error(err_msg)
+        else:
+            col.write(fig)
+
+
+def plot_boruta_features(col, df):
+    with col:
+        p_val = sl.slider("Significance (p-value)", min_value=0.05, max_value=0.95, step=0.05)
+        fig, err_msg = get_boruta_features(df, model_type=model_type, random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE,
+                                           test_fraction=sl.session_state.TEST_FRACTION,
+                                           param_distributions=sl.session_state.final_params,
+                                           p_val=p_val)
+        if fig is None:
+            col.error(err_msg)
+        else:
+            col.write(fig)
+
 
 
 def plot_regression_time_series_predictions(df, model, col):
@@ -307,7 +332,7 @@ sl.write('---')
 sl.markdown("""
             This app allows you to train machine learning models for regression and classification tasks.
             Furthermore, it allows you to visualize its performance and compute feature importance using 
-            various techniques such as SHAP, Recursive Feature Elimination (RFE), and Baruta algorithm. 
+            various techniques such as SHAP, Recursive Feature Elimination (RFE), and Boruta algorithm. 
             Using the most important features computed using these techniques, you can train a final 
             machine learning model that can be used for forecasting future trends in your data.
 """)
@@ -364,6 +389,7 @@ with sl.container():
 # ---- FINAL MODEL TRAINING PARAMETERS ---- #
 with sl.container():
     if "params" in sl.session_state.search_results:
+        sl.markdown("<h3 style='text-align: center;'> Hyperparmeter Tuning </h3>", unsafe_allow_html=True)
         sl.write("""
                 The following parameters were found optimum using Random Search
                 using five-fold cross validation. You can keep these parameters 
@@ -426,7 +452,19 @@ with sl.container():
                 plot_shap_graphs(left_shap_col, middle_shap_col, right_shap_col, sl.session_state.dataframe, sl.session_state.final_model)
             
             # IMPLEMENT RFE AND BARUTA LATER
+            if "Recursive Feature Elimination" in feature_selection_algorithms:
+                # RFE Values
+                sl.markdown("<h3 style='text-align: center;'> Recursive Feature Elimination </h3>", unsafe_allow_html=True)
+                _, middle_rfe_col, _ = sl.columns(3)
+                plot_rfe_features(middle_rfe_col, sl.session_state.dataframe, sl.session_state.final_model)
             
+            if "Boruta" in feature_selection_algorithms:
+                # Boruta Values
+                sl.markdown("<h3 style='text-align: center;'> Boruta Algorithm </h3>", unsafe_allow_html=True)
+                _, middle_rfe_col, _ = sl.columns(3)                
+                plot_boruta_features(middle_rfe_col, sl.session_state.dataframe)
+
+
             if len(feature_selection_algorithms) != 0:
                 sl.markdown("""<h4 style='text-align: center;'> Select the most important features that
                     you want to retain in the data based on the above Graphs </h4>""", unsafe_allow_html=True)
@@ -498,10 +536,14 @@ with sl.container():
     if sl.session_state.model_on_selected_feats is not None:
         sl.markdown("<h2 style='text-align: center;'> Forecasting Using the Model </h2>", unsafe_allow_html=True)
         # Getting New Data
-        sl.markdown("""<h5 style='text-align: center;'> You can now use the above trained model to make predictions
+        sl.write("""You can now use the above trained model to make predictions
                     about the target variable using your own data. Make sure that the data that you upload only has
                     the features that were chosen above to train the final model (the first column should
-                    have the time the data points were recorded). </h5>""", unsafe_allow_html= True)
+                    have the time the data points were recorded).""")
+        # sl.markdown("""<h5 style='text-align: center;'> You can now use the above trained model to make predictions
+        #             about the target variable using your own data. Make sure that the data that you upload only has
+        #             the features that were chosen above to train the final model (the first column should
+        #             have the time the data points were recorded). </h5>""", unsafe_allow_html= True)
 
         new_data = sl.file_uploader("New Input Data", type="csv")
         if new_data is not None:

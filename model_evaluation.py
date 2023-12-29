@@ -5,9 +5,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
+
 from sklearn.metrics import PrecisionRecallDisplay, RocCurveDisplay, ConfusionMatrixDisplay
 from sklearn.metrics import PredictionErrorDisplay, explained_variance_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import RFE
+
+from boruta import BorutaPy
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from tempfile import NamedTemporaryFile
 from helper_functions import delete_folder_contents
@@ -21,30 +26,30 @@ if not os.path.exists(temp_dir):
 
 # ------------- SHAP PLOTS -------------- #
 
-def plot_shap_bar(shap_vals):
+def plot_shap_bar(shap_vals, max_display):
     try:
         fig = plt.figure()
-        _ = shap.plots.bar(shap_vals)
+        _ = shap.plots.bar(shap_vals, max_display=max_display)
 
         return fig, None
     except Exception as e:
         return None, e
 
 
-def plot_shap_beeswarm(shap_vals):
+def plot_shap_beeswarm(shap_vals, max_display):
     try:
         fig = plt.figure()
-        _ = shap.plots.beeswarm(shap_vals)
+        _ = shap.plots.beeswarm(shap_vals, max_display=max_display)
 
         return fig, None
     except Exception as e:
         return None, e
     
 
-def plot_shap_heatmap(shap_vals):
+def plot_shap_heatmap(shap_vals, max_display):
     try:
         fig = plt.figure()
-        _ = shap.plots.heatmap(shap_vals)
+        _ = shap.plots.heatmap(shap_vals, max_display=max_display)
 
         return fig, None
     except Exception as e:
@@ -52,7 +57,77 @@ def plot_shap_heatmap(shap_vals):
 
 
 # --------------- RECURSIVE FEATURE ELIMINATION ---------------- #
+def get_rfe_features(df, model, random_state, test_fraction):
+    try:
+        dates = df.iloc[:,0].astype(str)
+        X, y = df.iloc[:,1:-1], df.iloc[:,-1]
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
+        selector = RFE(model, n_features_to_select=1)
+        selector.fit(X_train, y_train)
+
+        ranking = selector.ranking_
+        importance = (ranking.max() - ranking) + 1
+
+        sorted_indices = np.argsort(ranking)
+        sorted_features = X.columns[sorted_indices]
+        sorted_importance = importance[sorted_indices]
+
+        fig, ax = plt.subplots()
+        ax.bar(sorted_features, sorted_importance, color="red")
+        ax.set_xticks(sorted_features)
+        ax.set_xticklabels(sorted_features, rotation=60)
+        ax.set_xlabel("Features")
+        ax.set_ylabel("Feature Importance \n (Higher is more important)")
+        ax.set_title(f"Feature Importance (in arbitrary units) obtained from RFE")
+
+        return fig, None
+    except Exception as e:
+        return None, e
+
+
+# --------------- BORUTA ALGORITHM ---------------- #
+def get_boruta_features(df, model_type, random_state, test_fraction, p_val, **kwargs):
+    try:
+        if (model_type == "Random Forest Classifier") or (model_type == "Random Forest Regressor"):
+            dates = df.iloc[:,0].astype(str)
+            X, y = df.iloc[:,1:-1], df.iloc[:,-1]
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
+            
+            param_distributions = kwargs['param_distributions']
+            new_params = {}
+            new_params["n_estimators"] = param_distributions["n_estimators"]
+            new_params["max_depth"] = param_distributions["max_depth"]
+
+            if model_type == "Random Forest Classifier":
+                model = RandomForestClassifier(**new_params)
+            else:
+                model = RandomForestRegressor(**new_params)
+
+            selector = BorutaPy(model, n_estimators=param_distributions["n_estimators"],
+                                 random_state=1, alpha=p_val)
+            selector.fit(X_train.values[:,:], y_train.values[:])
+
+            ranking = selector.ranking_
+            importance = (ranking.max() - ranking) + 1
+
+            sorted_indices = np.argsort(ranking)
+            sorted_features = X.columns[sorted_indices]
+            sorted_importance = importance[sorted_indices]
+
+            fig, ax = plt.subplots()
+            ax.bar(sorted_features, sorted_importance, color="blue")
+            ax.set_xticks(sorted_features)
+            ax.set_xticklabels(sorted_features, rotation=60)
+            ax.set_ylabel("Feature Importance \n (Higher is more important)")
+            ax.set_xlabel("Features")
+            ax.set_title(f"Feature Importance (arbitrary units) obtained from Boruta \n with p-value = {p_val}")
+
+            return fig, None
+        else:
+            return None, "Boruta can only be performed on tree-based estimators"
+    except Exception as e:
+        return None, e
 
 
 
