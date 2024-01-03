@@ -137,7 +137,7 @@ def plot_precision_recall(df, model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=True, stratify=y, random_state=random_state)
 
         fig, ax = plt.subplots()
         PrecisionRecallDisplay.from_estimator(model, X_train, y_train, ax=ax, name='Training')
@@ -152,7 +152,7 @@ def plot_roc_auc(df, model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=True, stratify=y, random_state=random_state)
 
         fig, ax = plt.subplots()
         RocCurveDisplay.from_estimator(model, X_train, y_train, ax=ax, name='Training')
@@ -166,7 +166,7 @@ def plot_confusion_matrix(df, model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=True, stratify=y, random_state=random_state)
 
         fig, ax = plt.subplots()
         ConfusionMatrixDisplay.from_estimator(model, X_test, y_test, 
@@ -180,26 +180,33 @@ def plot_confusion_matrix(df, model, random_state, test_fraction):
 def get_classification_time_series_predictions(df, model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
+        date_indices = np.arange(len(dates))
+
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=True, stratify=y, random_state=random_state)
+
+        _, _, train_dates, test_dates = train_test_split(X, date_indices, test_size=test_fraction, shuffle=True, stratify=y, random_state=random_state)
+        sorted_test_dates_args = np.argsort(test_dates)
 
         target_name = df.columns[-1]
         fig, ax = plt.subplots(figsize=(10,5))
         y_pred = model.predict(X_test)
 
-        x_vals = range(len(y_test))
-        x_ticks = dates.iloc[len(y_train):]
+        x_vals = test_dates[sorted_test_dates_args]
 
-        diff = y_pred - y_test
+        x_ticks = x_vals[::(len(x_vals)//20)]
+
+        diff = np.array(y_pred - y_test)
+        diff_sorted = diff[sorted_test_dates_args]
 
         ax.plot(x_vals, [0]*len(y_test), "--r")
-        ax.scatter(x_vals, diff, s=20, label=f"(Predicted - Target) {target_name} values")
+        ax.scatter(x_vals, diff_sorted, s=20, label=f"(Predicted - Target) {target_name} values")
         ax.set_ylim(-1.5, 1.5)
         ax.set_yticks([-1,0,1])
         ax.legend(loc='upper right')
         ax.set_ylabel(target_name)
         ax.set_xlabel("Time Steps")
-        ax.set_xticks(x_vals)
+        ax.set_xticks(x_ticks)
         ax.set_xticklabels(x_ticks, rotation=90)
         ax.set_title(f"Model's Performance on Predicting {target_name} values \n from Selected Features")
         

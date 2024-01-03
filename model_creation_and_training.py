@@ -29,11 +29,11 @@ def create_and_search_tree_classifier(df, **kwargs):
     the optimum parameters and models
     """
 
-    base_classifier = CatBoostClassifier(loss_function="Logloss")    
+    base_classifier = CatBoostClassifier(loss_function="Logloss")
 
     dates = df.iloc[:,0].astype(str)
     X, y = df.iloc[:,1:-1], df.iloc[:,-1]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=False, random_state=RANDOM_STATE)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=True, stratify=y, random_state=RANDOM_STATE)
 
     param_distributions = kwargs['param_distributions']
 
@@ -66,9 +66,10 @@ def train_final_classifier(df:pd.DataFrame, **kwargs):
 
     dates = df.iloc[:,0].astype(str)
     X, y = df.iloc[:,1:-1], df.iloc[:,-1]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=False, random_state=RANDOM_STATE)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=True, stratify=y, random_state=RANDOM_STATE)
 
     classifier.fit(X=X_train, y=y_train)
+
     return classifier, RANDOM_STATE, TEST_FRACTION
 
 
