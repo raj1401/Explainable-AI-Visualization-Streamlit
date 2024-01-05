@@ -3,6 +3,7 @@ import shutil
 
 from tempfile import NamedTemporaryFile
 import pandas as pd
+import streamlit as sl
 
 def delete_folder_contents(folder_path):
     try:
@@ -19,6 +20,7 @@ def delete_folder_contents(folder_path):
         print(f"Error: {e}")
 
 
+@sl.cache_data
 def data_file_loader(data_file, temp_dir):
     if data_file is not None:
         try:
@@ -32,7 +34,7 @@ def data_file_loader(data_file, temp_dir):
     else:
         return None
 
-
+@sl.cache_data
 def create_ordered_dataframe(original_df, time_col, independent_feats, target_var):
     df = pd.DataFrame()
     df[time_col] = original_df[time_col]

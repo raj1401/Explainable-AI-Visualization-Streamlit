@@ -1,9 +1,12 @@
 import streamlit as sl
 import shap
-import base64
+import numpy as np
 
 from model_creation_and_training import create_and_search_tree_classifier, train_final_classifier
 from model_creation_and_training import create_and_search_tree_regressor, train_final_regressor
+
+from model_creation_and_training import create_and_search_logistic_regression, train_final_logistic_regression
+
 from model_creation_and_training import get_lead_lag_correlations, shift_dataframe
 
 
@@ -104,7 +107,18 @@ def on_click_search_params():
         with sl.spinner("Searching for Optimum Parameters:"):
             params_, model_ = create_and_search_tree_regressor(df=sl.session_state.dataframe, param_distributions=param_distributions)
         sl.session_state.search_results["params"] = params_
-        sl.session_state.search_results["model"] = model_       
+        sl.session_state.search_results["model"] = model_
+    
+    elif model_type == "Logistic Regression":
+        param_distributions = {
+            'logistic_regression__C': np.arange(0, 10, 0.2),
+            'logistic_regression__l1_ratio': np.arange(0, 1, 0.1)
+        }
+
+        with sl.spinner("Searching for Optimum Parameters:"):
+            params_, model_ = create_and_search_logistic_regression(df=sl.session_state.dataframe, param_distributions=param_distributions)
+        sl.session_state.search_results["params"] = params_
+        sl.session_state.search_results["model"] = model_
 
 
 def reset_params():
@@ -134,6 +148,12 @@ def train_final_model():
         sl.session_state.final_model = final_model
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
+    
+    elif model_type == "Logistic Regression":
+        final_model, rand_state, test_fraction = train_final_logistic_regression(df=sl.session_state.dataframe, param_distributions=sl.session_state.final_params)
+        sl.session_state.final_model = final_model
+        sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
+        sl.session_state.TEST_FRACTION = test_fraction
 
 
 def trigger_training_on_selected_features():
@@ -147,6 +167,9 @@ def train_model_on_selected_feats():
     elif model_type == "Random Forest Regressor":
         model, _, _ = train_final_regressor(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
         sl.session_state.model_on_selected_feats = model
+    elif model_type == "Logistic Regression":
+        model, _, _ = train_final_logistic_regression(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
+        sl.session_state.model_on_selected_feats = model
 
 
 def train_shifted_model(train_df):
@@ -156,13 +179,16 @@ def train_shifted_model(train_df):
     elif model_type == "Random Forest Regressor":
         shifted_model, _, _ = train_final_regressor(df=train_df, param_distributions=sl.session_state.final_params)
         return shifted_model
+    elif model_type == "Logistic Regression":
+        shifted_model, _, _ = train_final_logistic_regression(df=train_df, param_distributions=sl.session_state.final_params)
+        return shifted_model
 
 
 def plot_classifier_performance_graphs(left_col, middle_col, right_col, df, model):
     # ROC-AUC Curve
     with left_col:
         left_col.markdown("<h3 style='text-align: center;'> ROC-AUC </h3>", unsafe_allow_html=True)
-        fig, err_msg = plot_roc_auc(df=df, model=model, 
+        fig, err_msg = plot_roc_auc(df=df, _model=model, 
                                     random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, 
                                     test_fraction=sl.session_state.TEST_FRACTION)
         if fig is None:
@@ -173,7 +199,7 @@ def plot_classifier_performance_graphs(left_col, middle_col, right_col, df, mode
     # Precision-Recall Curve
     with middle_col:
         middle_col.markdown("<h3 style='text-align: center;'> Precision-Recall </h3>", unsafe_allow_html=True)
-        fig, err_msg = plot_precision_recall(df=df, model=model, 
+        fig, err_msg = plot_precision_recall(df=df, _model=model, 
                                                 random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, 
                                                 test_fraction=sl.session_state.TEST_FRACTION)
         if fig is None:
@@ -184,7 +210,7 @@ def plot_classifier_performance_graphs(left_col, middle_col, right_col, df, mode
     # Confusion Matrix
     with right_col:
         right_col.markdown("<h3 style='text-align: center;'> Confusion Matrix </h3>", unsafe_allow_html=True)
-        fig, err_msg = plot_confusion_matrix(df=df, model=model, 
+        fig, err_msg = plot_confusion_matrix(df=df, _model=model, 
                                                 random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, 
                                                 test_fraction=sl.session_state.TEST_FRACTION)
         if fig is None:
@@ -197,7 +223,7 @@ def plot_regressor_performance_graphs(left_col, right_col, df, model):
     # Prediction Error
     with left_col:
         left_col.markdown("<h3 style='text-align: center;'> Prediction Error Graph (On Testing Data) </h3>", unsafe_allow_html=True)
-        fig, err_msg = plot_prediction_error(df=df, model=model, 
+        fig, err_msg = plot_prediction_error(df=df, _model=model, 
                                              random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, 
                                              test_fraction=sl.session_state.TEST_FRACTION)
         if fig is None:
@@ -208,7 +234,7 @@ def plot_regressor_performance_graphs(left_col, right_col, df, model):
     # RMSE On Train and Test Set
     with right_col:
         right_col.markdown("<h3 style='text-align: center;'> Regression Metrics </h3>", unsafe_allow_html=True)
-        exp_var_score, mse, r2_scr, err_msg = get_regression_metrics(df=df, model=model, 
+        exp_var_score, mse, r2_scr, err_msg = get_regression_metrics(df=df, _model=model, 
                                              random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, 
                                              test_fraction=sl.session_state.TEST_FRACTION)
         if err_msg is None:
@@ -221,8 +247,15 @@ def plot_regressor_performance_graphs(left_col, right_col, df, model):
 
 def plot_shap_graphs(left_col, middle_col, right_col, df, model):
     feature_data = df.iloc[:,1:-1]
-    explainer = shap.Explainer(model)
-    shap_values = explainer(feature_data)
+    
+    if model_type in ["Random Forest Classifier", "Random Forest Regressor"]:
+        explainer = shap.Explainer(model)
+        shap_values = explainer(feature_data)
+    elif model_type == "Logistic Regression":
+        back_dist = shap.utils.sample(feature_data, int(0.1*len(feature_data.iloc[:,0])))
+        explainer = shap.Explainer(model.named_steps['logistic_regression'], back_dist)
+        shap_values = explainer(feature_data)
+
 
     # Bar Plot
     with left_col:
@@ -254,7 +287,7 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
 
 def plot_rfe_features(col, df, model):
     with col:
-        fig, err_msg = get_rfe_features(df, model, random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE,
+        fig, err_msg = get_rfe_features(df, model, model_type, random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE,
                                         test_fraction=sl.session_state.TEST_FRACTION)
         if fig is None:
             col.error(err_msg)
@@ -277,7 +310,7 @@ def plot_boruta_features(col, df):
 
 
 def plot_regression_time_series_predictions(df, model, col):
-    fig, err_msg = get_regression_time_series_predictions(df=df, model=model,
+    fig, err_msg = get_regression_time_series_predictions(df=df, _model=model,
                                                random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE,
                                                test_fraction=sl.session_state.TEST_FRACTION)
     if fig is None:
@@ -287,7 +320,7 @@ def plot_regression_time_series_predictions(df, model, col):
 
 
 def plot_classification_time_series_predictions(df, model, col):
-    fig, err_msg = get_classification_time_series_predictions(df=df, model=model,
+    fig, err_msg = get_classification_time_series_predictions(df=df, _model=model,
                                                random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE,
                                                test_fraction=sl.session_state.TEST_FRACTION)
     if fig is None:
@@ -296,9 +329,9 @@ def plot_classification_time_series_predictions(df, model, col):
         col.write(fig)
 
 
-def plot_forecasts(new_data, model_type, left_col, right_col):
-    if model_type == "Random Forest Classifier":
-        fig, df, err_msg = forecast_from_classifier(model=sl.session_state.model_on_selected_feats, data_file=new_data)
+def plot_forecasts(new_data, left_col, right_col):
+    if model_type in sl.session_state.classification_models:
+        fig, df, err_msg = forecast_from_classifier(_model=sl.session_state.model_on_selected_feats, data_file=new_data)
         if err_msg is not None:
             sl.write(err_msg)
         else:
@@ -308,8 +341,8 @@ def plot_forecasts(new_data, model_type, left_col, right_col):
             with right_col:
                 sl.download_button(label="Download Augmented Dataset", data=csv_file, file_name="augmented_dataset.csv", mime='text/csv')
 
-    elif model_type == "Random Forest Regressor":
-        fig, df, err_msg = forecast_from_regressor(model=sl.session_state.model_on_selected_feats, data_file=new_data)
+    elif model_type in sl.session_state.regression_models:
+        fig, df, err_msg = forecast_from_regressor(_model=sl.session_state.model_on_selected_feats, data_file=new_data)
         if err_msg is not None:
             sl.write(err_msg)
         else:
@@ -402,10 +435,10 @@ with sl.container():
 
         for i in range(num_params//2+1):
             with left_param_col:
-                sl.session_state.final_params[param_keys[i]] = sl.number_input(param_keys[i], value=param_dict[param_keys[i]], format='%d')
+                sl.session_state.final_params[param_keys[i]] = sl.number_input(param_keys[i], value=param_dict[param_keys[i]])
         for i in range(num_params//2+1,num_params):
             with right_param_col:
-                sl.session_state.final_params[param_keys[i]] = sl.number_input(param_keys[i], value=param_dict[param_keys[i]], format='%d')
+                sl.session_state.final_params[param_keys[i]] = sl.number_input(param_keys[i], value=param_dict[param_keys[i]])
 
 with sl.container():
     if len(sl.session_state.final_params) != 0:
@@ -509,14 +542,14 @@ with sl.container():
             sl.markdown("<h2 style='text-align: center;'> Model Performance on Selected Features </h2>", unsafe_allow_html=True)
         else:
             sl.markdown("<h2 style='text-align: center;'> Original Model Performance </h2>", unsafe_allow_html=True)
-        if model_type == "Random Forest Classifier":
+        if model_type in sl.session_state.classification_models:
             left_graph_col, middle_graph_col, right_graph_col = sl.columns(3)
             plot_classifier_performance_graphs(left_graph_col, middle_graph_col, right_graph_col, sl.session_state.feats_selected_df, sl.session_state.model_on_selected_feats)
             # Time-Series Prediction
             sl.markdown("<h3 style='text-align: center;'> Time-Series Prediction </h3>", unsafe_allow_html=True)
             _, pred_graph_col, _ = sl.columns((1,4,1))
             plot_classification_time_series_predictions(sl.session_state.feats_selected_df, sl.session_state.model_on_selected_feats, pred_graph_col)
-        elif model_type == "Random Forest Regressor":
+        elif model_type in sl.session_state.regression_models:
             left_graph_col, right_graph_col = sl.columns((1,1))
             plot_regressor_performance_graphs(left_graph_col, right_graph_col, sl.session_state.feats_selected_df, sl.session_state.model_on_selected_feats)
             # Time-Series Prediction
@@ -548,7 +581,7 @@ with sl.container():
         new_data = sl.file_uploader("New Input Data", type="csv")
         if new_data is not None:
             left_graph_col, right_col = sl.columns((3,1))
-            plot_forecasts(new_data, model_type, left_graph_col, right_col)
+            plot_forecasts(new_data, left_graph_col, right_col)
 
 
 

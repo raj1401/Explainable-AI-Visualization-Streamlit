@@ -3,9 +3,14 @@ from tempfile import NamedTemporaryFile
 from helper_functions import delete_folder_contents
 
 from catboost import CatBoostClassifier, CatBoostRegressor
+from sklearn.linear_model import LogisticRegression, LinearRegression
+
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import make_scorer, f1_score
 import pandas as pd
+import streamlit as sl
 
 
 # ---- GLOBAL VARIABLES ---- #
@@ -21,7 +26,8 @@ if not os.path.exists(TEMP_DIR):
 
 
 # ---------- RANDOM FOREST CLASSIFIER ---------- #
-
+    
+@sl.cache_resource
 def create_and_search_tree_classifier(df, **kwargs):
     """
     This function performs 5-fold cross-validation and randomly searches over parameters
@@ -58,6 +64,7 @@ def create_and_search_tree_classifier(df, **kwargs):
     return best_params, best_model
 
 
+@sl.cache_resource
 def train_final_classifier(df:pd.DataFrame, **kwargs):    
     param_distributions = kwargs['param_distributions']
     param_distributions["loss_function"] = "Logloss"
@@ -75,6 +82,7 @@ def train_final_classifier(df:pd.DataFrame, **kwargs):
 
 # ---------- RANDOM FOREST REGRESSOR ---------- #
 
+@sl.cache_resource
 def create_and_search_tree_regressor(df, **kwargs):
     """
     This function performs 5-fold cross-validation and randomly searches over parameters
@@ -110,6 +118,7 @@ def create_and_search_tree_regressor(df, **kwargs):
     return best_params, best_model
 
 
+@sl.cache_resource
 def train_final_regressor(df:pd.DataFrame, **kwargs):    
     param_distributions = kwargs['param_distributions']
 
@@ -123,8 +132,68 @@ def train_final_regressor(df:pd.DataFrame, **kwargs):
     return regressor, RANDOM_STATE, TEST_FRACTION
 
 
+# ---------- LOGISTIC REGRESSION ------------ #
+
+@sl.cache_resource
+def create_and_search_logistic_regression(df, **kwargs):
+    param_distributions = kwargs['param_distributions']
+
+    pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('logistic_regression', LogisticRegression(penalty='elasticnet', solver='saga'))
+    ])
+
+    scoring = make_scorer(lambda y_true, y_pred: (f1_score(y_true, y_pred, pos_label=0) + f1_score(y_true, y_pred, pos_label=1)) / 2)
+
+    random_search = RandomizedSearchCV(
+        pipeline,
+        param_distributions=param_distributions,
+        n_iter=NUM_ITERS,
+        cv=CROSS_VALID,
+        n_jobs=-1,
+        scoring=scoring,
+        random_state=42,
+        verbose=0
+    )
+
+    dates = df.iloc[:,0].astype(str)
+    X, y = df.iloc[:,1:-1], df.iloc[:,-1]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=True, stratify=y, random_state=RANDOM_STATE)
+
+    random_search.fit(X_train, y_train)
+
+    best_params = random_search.best_params_
+    best_model = random_search.best_estimator_
+
+    return best_params, best_model
+
+
+@sl.cache_resource
+def train_final_logistic_regression(df, **kwargs):
+    param_distributions = kwargs['param_distributions']
+
+    pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('logistic_regression', LogisticRegression(penalty='elasticnet', solver='saga'))
+    ])
+
+    pipeline.set_params(**param_distributions)
+
+    dates = df.iloc[:,0].astype(str)
+    X, y = df.iloc[:,1:-1], df.iloc[:,-1]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=True, stratify=y, random_state=RANDOM_STATE)
+
+    pipeline.fit(X=X_train, y=y_train)
+
+    return pipeline, RANDOM_STATE, TEST_FRACTION
+
+
+# ---------- LINEAR REGRESSION -------------- #
+
+
 # ---------- LEAD-LAG CORRELATIONS ---------- #
 
+@sl.cache_data
 def get_lead_lag_correlations(df:pd.DataFrame):
     df_copy = df.copy(deep=True)
     X, y = df_copy.iloc[:,:-1], df_copy.iloc[:,-1].to_frame()
@@ -148,6 +217,7 @@ def get_lead_lag_correlations(df:pd.DataFrame):
     return lead_corr, lag_corr
 
 
+@sl.cache_data
 def shift_dataframe(df:pd.DataFrame, corr:pd.DataFrame):
     lags = corr['Lags']
     to_shift = corr.index.values

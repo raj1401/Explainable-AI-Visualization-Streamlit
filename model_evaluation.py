@@ -2,6 +2,7 @@ import os
 
 import shap
 import pandas as pd
+import streamlit as sl
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
@@ -26,30 +27,33 @@ if not os.path.exists(temp_dir):
 
 # ------------- SHAP PLOTS -------------- #
 
-def plot_shap_bar(shap_vals, max_display):
+@sl.cache_data
+def plot_shap_bar(_shap_vals, max_display):
     try:
         fig = plt.figure()
-        _ = shap.plots.bar(shap_vals, max_display=max_display)
+        _ = shap.plots.bar(_shap_vals, max_display=max_display)
 
         return fig, None
     except Exception as e:
         return None, e
 
 
-def plot_shap_beeswarm(shap_vals, max_display):
+@sl.cache_data
+def plot_shap_beeswarm(_shap_vals, max_display):
     try:
         fig = plt.figure()
-        _ = shap.plots.beeswarm(shap_vals, max_display=max_display)
+        _ = shap.plots.beeswarm(_shap_vals, max_display=max_display)
 
         return fig, None
     except Exception as e:
         return None, e
     
 
-def plot_shap_heatmap(shap_vals, max_display):
+@sl.cache_data
+def plot_shap_heatmap(_shap_vals, max_display):
     try:
         fig = plt.figure()
-        _ = shap.plots.heatmap(shap_vals, max_display=max_display)
+        _ = shap.plots.heatmap(_shap_vals, max_display=max_display)
 
         return fig, None
     except Exception as e:
@@ -57,13 +61,20 @@ def plot_shap_heatmap(shap_vals, max_display):
 
 
 # --------------- RECURSIVE FEATURE ELIMINATION ---------------- #
-def get_rfe_features(df, model, random_state, test_fraction):
+    
+@sl.cache_data
+def get_rfe_features(df, _model, model_type, random_state, test_fraction):
     try:
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
-        selector = RFE(model, n_features_to_select=1)
+        if model_type == "Logistic Regression":
+            scaler = _model.named_steps['scaler']
+            X_train = scaler.transform(X_train)
+            _model = _model.named_steps['logistic_regression']
+
+        selector = RFE(_model, n_features_to_select=1)
         selector.fit(X_train, y_train)
 
         ranking = selector.ranking_
@@ -87,6 +98,8 @@ def get_rfe_features(df, model, random_state, test_fraction):
 
 
 # --------------- BORUTA ALGORITHM ---------------- #
+    
+@sl.cache_data
 def get_boruta_features(df, model_type, random_state, test_fraction, p_val, **kwargs):
     try:
         if (model_type == "Random Forest Classifier") or (model_type == "Random Forest Regressor"):
@@ -133,43 +146,47 @@ def get_boruta_features(df, model_type, random_state, test_fraction, p_val, **kw
 
 # --------------- CLASSIFIER PLOTS ---------------- #
 
-def plot_precision_recall(df, model, random_state, test_fraction):
+@sl.cache_data
+def plot_precision_recall(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=True, stratify=y, random_state=random_state)
 
         fig, ax = plt.subplots()
-        PrecisionRecallDisplay.from_estimator(model, X_train, y_train, ax=ax, name='Training')
-        PrecisionRecallDisplay.from_estimator(model, X_test, y_test, ax=ax, name='Testing')
+        PrecisionRecallDisplay.from_estimator(_model, X_train, y_train, ax=ax, name='Training')
+        PrecisionRecallDisplay.from_estimator(_model, X_test, y_test, ax=ax, name='Testing')
 
         return fig, None
     except Exception as e:
         return None, e
 
 
-def plot_roc_auc(df, model, random_state, test_fraction):
+@sl.cache_data
+def plot_roc_auc(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=True, stratify=y, random_state=random_state)
 
         fig, ax = plt.subplots()
-        RocCurveDisplay.from_estimator(model, X_train, y_train, ax=ax, name='Training')
-        RocCurveDisplay.from_estimator(model, X_test, y_test, ax=ax, name='Testing')
+        RocCurveDisplay.from_estimator(_model, X_train, y_train, ax=ax, name='Training')
+        RocCurveDisplay.from_estimator(_model, X_test, y_test, ax=ax, name='Testing')
 
         return fig, None
     except Exception as e:
         return None, e
 
-def plot_confusion_matrix(df, model, random_state, test_fraction):
+
+@sl.cache_data
+def plot_confusion_matrix(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=True, stratify=y, random_state=random_state)
 
         fig, ax = plt.subplots()
-        ConfusionMatrixDisplay.from_estimator(model, X_test, y_test, 
+        ConfusionMatrixDisplay.from_estimator(_model, X_test, y_test, 
                                             display_labels=['Non Detect', 'Detect'],
                                             ax=ax, cmap=plt.cm.Blues, colorbar=False)
 
@@ -177,7 +194,9 @@ def plot_confusion_matrix(df, model, random_state, test_fraction):
     except Exception as e:
         return None, e
 
-def get_classification_time_series_predictions(df, model, random_state, test_fraction):
+
+@sl.cache_data
+def get_classification_time_series_predictions(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         date_indices = np.arange(len(dates))
@@ -190,7 +209,7 @@ def get_classification_time_series_predictions(df, model, random_state, test_fra
 
         target_name = df.columns[-1]
         fig, ax = plt.subplots(figsize=(10,5))
-        y_pred = model.predict(X_test)
+        y_pred = _model.predict(X_test)
 
         x_vals = test_dates[sorted_test_dates_args]
 
@@ -217,25 +236,28 @@ def get_classification_time_series_predictions(df, model, random_state, test_fra
 
 # ------------ REGRRESSOR PLOTS ------------- #
 
-def plot_prediction_error(df, model, random_state, test_fraction):
+@sl.cache_data
+def plot_prediction_error(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
 
         fig, ax = plt.subplots()
-        PredictionErrorDisplay.from_estimator(model, X_test, y_test, ax=ax)
+        PredictionErrorDisplay.from_estimator(_model, X_test, y_test, ax=ax)
 
         return fig, None
     except Exception as e:
         return None, e
 
-def get_regression_metrics(df, model, random_state, test_fraction):
+
+@sl.cache_data
+def get_regression_metrics(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
-        test_pred = model.predict(X_test)
+        test_pred = _model.predict(X_test)
 
         exp_var_score = explained_variance_score(y_test, test_pred)
         mse = mean_squared_error(y_test, test_pred)
@@ -249,7 +271,9 @@ def get_regression_metrics(df, model, random_state, test_fraction):
     except Exception as e:
         return None, None, None, e
 
-def get_regression_time_series_predictions(df, model, random_state, test_fraction):
+
+@sl.cache_data
+def get_regression_time_series_predictions(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
         X, y = df.iloc[:,1:-1], df.iloc[:,-1]
@@ -257,7 +281,7 @@ def get_regression_time_series_predictions(df, model, random_state, test_fractio
 
         # Calculating the t-statistics
         CONFIDENCE_LEVEL = 0.95
-        y_pred = model.predict(X_test)
+        y_pred = _model.predict(X_test)
         residuals = np.array(y_test - y_pred)
         residual_std = residuals.std()
 

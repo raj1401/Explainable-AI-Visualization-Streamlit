@@ -2,6 +2,7 @@ import os
 from tempfile import NamedTemporaryFile
 
 import pandas as pd
+import streamlit as sl
 import matplotlib.pyplot as plt
 
 
@@ -9,7 +10,8 @@ import matplotlib.pyplot as plt
 TEMP_DIR = "temp_data"
 
 
-def forecast_from_classifier(model, data_file):
+@sl.cache_data
+def forecast_from_classifier(_model, data_file):
     if data_file is not None:
         try:
             with NamedTemporaryFile(mode='wb', suffix=".csv", dir=TEMP_DIR, delete=False) as f:
@@ -22,7 +24,7 @@ def forecast_from_classifier(model, data_file):
         return None, None, None
     
     X, dates = df.iloc[:,1:], df.iloc[:,0].astype(str)
-    y_pred = model.predict(X)
+    y_pred = _model.predict(X)
 
     fig, ax = plt.subplots(figsize=(10,5))
     xticks = dates.iloc[::len(dates)//20]
@@ -43,7 +45,8 @@ def forecast_from_classifier(model, data_file):
     return fig, df, None
 
 
-def forecast_from_regressor(model, data_file):
+@sl.cache_data
+def forecast_from_regressor(_model, data_file):
     if data_file is not None:
         try:
             with NamedTemporaryFile(mode='wb', suffix=".csv", dir=TEMP_DIR, delete=False) as f:
@@ -56,7 +59,7 @@ def forecast_from_regressor(model, data_file):
         return None, None, None
     
     X, dates = df.iloc[:,1:], df.iloc[:,0].astype(str)
-    y_pred = model.predict(X)
+    y_pred = _model.predict(X)
 
     fig, ax = plt.subplots(figsize=(10,5))
     xticks = dates.iloc[::len(dates)//20]
