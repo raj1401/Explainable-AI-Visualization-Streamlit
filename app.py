@@ -1,14 +1,17 @@
 import streamlit as sl
 import shap
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 from model_creation_and_training import create_and_search_tree_classifier, train_final_classifier
 from model_creation_and_training import create_and_search_tree_regressor, train_final_regressor
 
 from model_creation_and_training import create_and_search_logistic_regression, train_final_logistic_regression
 
-from model_creation_and_training import get_lead_lag_correlations, shift_dataframe
+from model_creation_and_training import create_and_Search_KNN_classifer, train_final_KNN_classifier
+from model_creation_and_training import create_and_Search_SVM_classifer, train_final_SVM_classifier
 
+from model_creation_and_training import get_lead_lag_correlations, shift_dataframe
 
 from model_evaluation import plot_precision_recall, plot_roc_auc, plot_confusion_matrix
 from model_evaluation import plot_shap_bar, plot_shap_beeswarm, plot_shap_heatmap
@@ -25,10 +28,10 @@ from helper_functions import delete_folder_contents, data_file_loader, create_or
 TEMP_DIR = "temp_data"
 
 if 'classification_models' not in sl.session_state:
-    sl.session_state.classification_models = ["Random Forest Classifier", "Logistic Regression", "Fully-Connected Deep Neural Network Classification"]
+    sl.session_state.classification_models = ["Random Forest Classifier", "Logistic Regression", "KNN Classifier", "SVM Classifier", "Fully-Connected Deep Neural Network Classification"]
 
 if 'regression_models' not in sl.session_state:
-    sl.session_state.regression_models = ["Random Forest Regressor", "Linear Regression", "Fully-Connected Deep Neural Network Regression"]
+    sl.session_state.regression_models = ["Random Forest Regressor", "Linear Regression", "KNN Regression", "SVM Regression", "Fully-Connected Deep Neural Network Regression"]
 
 if 'all_models' not in sl.session_state:
     sl.session_state.all_models = sl.session_state.classification_models + sl.session_state.regression_models
@@ -120,6 +123,27 @@ def on_click_search_params():
         sl.session_state.search_results["params"] = params_
         sl.session_state.search_results["model"] = model_
 
+    elif model_type == "KNN Classifier":
+        param_distributions = {
+            'knn_classifier__n_neighbors': np.arange(start=2, stop=16, step=2),
+            'knn_classifier__leaf_size': np.arange(start=15, stop=60, step=15),
+            'knn_classifier__p': np.arange(start=1, stop=2, step=0.1)
+        }
+
+        with sl.spinner("Searching for Optimum Parameters:"):
+            params_, model_ = create_and_Search_KNN_classifer(df=sl.session_state.dataframe, param_distributions=param_distributions)
+        sl.session_state.search_results["params"] = params_
+        sl.session_state.search_results["model"] = model_
+    
+    elif model_type == "SVM Classifier":
+        param_distributions = {
+            'svm_classifier__C': np.arange(start=0, stop=10, step=0.2)
+        }
+
+        with sl.spinner("Searching for Optimum Parameters:"):
+            params_, model_ = create_and_Search_SVM_classifer(df=sl.session_state.dataframe, param_distributions=param_distributions)
+        sl.session_state.search_results["params"] = params_
+        sl.session_state.search_results["model"] = model_
 
 def reset_params():
     sl.session_state.search_results = {}
@@ -154,6 +178,18 @@ def train_final_model():
         sl.session_state.final_model = final_model
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
+    
+    elif model_type == "KNN Classifier":
+        final_model, rand_state, test_fraction = train_final_KNN_classifier(df=sl.session_state.dataframe, param_distributions=sl.session_state.final_params)
+        sl.session_state.final_model = final_model
+        sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
+        sl.session_state.TEST_FRACTION = test_fraction
+    
+    elif model_type == "SVM Classifier":
+        final_model, rand_state, test_fraction = train_final_SVM_classifier(df=sl.session_state.dataframe, param_distributions=sl.session_state.final_params)
+        sl.session_state.final_model = final_model
+        sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
+        sl.session_state.TEST_FRACTION = test_fraction
 
 
 def trigger_training_on_selected_features():
@@ -167,8 +203,11 @@ def train_model_on_selected_feats():
     elif model_type == "Random Forest Regressor":
         model, _, _ = train_final_regressor(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
         sl.session_state.model_on_selected_feats = model
-    elif model_type == "Logistic Regression":
-        model, _, _ = train_final_logistic_regression(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
+    elif model_type == "KNN Classifier":
+        model, _, _ = train_final_KNN_classifier(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
+        sl.session_state.model_on_selected_feats = model
+    elif model_type == "SVM Classifier":
+        model, _, _ = train_final_SVM_classifier(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
         sl.session_state.model_on_selected_feats = model
 
 
@@ -181,6 +220,12 @@ def train_shifted_model(train_df):
         return shifted_model
     elif model_type == "Logistic Regression":
         shifted_model, _, _ = train_final_logistic_regression(df=train_df, param_distributions=sl.session_state.final_params)
+        return shifted_model
+    elif model_type == "KNN Classifier":
+        shifted_model, _, _ = train_final_KNN_classifier(df=train_df, param_distributions=sl.session_state.final_params)
+        return shifted_model
+    elif model_type == "SVM Classifier":
+        shifted_model, _, _ = train_final_SVM_classifier(df=train_df, param_distributions=sl.session_state.final_params)
         return shifted_model
 
 
@@ -246,21 +291,35 @@ def plot_regressor_performance_graphs(left_col, right_col, df, model):
 
 
 def plot_shap_graphs(left_col, middle_col, right_col, df, model):
-    feature_data = df.iloc[:,1:-1]
+    if model_type in sl.session_state.classification_models:
+        X_train, X_test, _, _ = train_test_split(df.iloc[:,1:-1], df.iloc[:,-1], test_size=sl.session_state.TEST_FRACTION, 
+                                                 shuffle=True, stratify=df.iloc[:,-1], random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE)
+    else:
+        X_train, X_test, _, _ = train_test_split(df.iloc[:,1:-1], df.iloc[:,-1], test_size=sl.session_state.TEST_FRACTION, 
+                                                 shuffle=False, random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE)
     
     if model_type in ["Random Forest Classifier", "Random Forest Regressor"]:
         explainer = shap.Explainer(model)
-        shap_values = explainer(feature_data)
+        shap_values = explainer(X_test)
     elif model_type == "Logistic Regression":
-        back_dist = shap.utils.sample(feature_data, int(0.1*len(feature_data.iloc[:,0])))
+        back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
         explainer = shap.Explainer(model.named_steps['logistic_regression'], back_dist)
-        shap_values = explainer(feature_data)
+        shap_values = explainer(X_test)
+    elif model_type == "KNN Classifier":
+        back_dist = X_train.median().values.reshape((1, X_train.shape[1]))
+        explainer = shap.Explainer(model.named_steps['knn_classifier'].predict_proba, back_dist)
+        shap_values = explainer(X_test)
+    elif model_type == "SVM Classifier":
+        back_dist = shap.utils.sample(X_train, int(0.05*len(X_train.iloc[:,0])))
+        # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
+        explainer = shap.KernelExplainer(model.named_steps['svm_classifier'].predict_proba, back_dist)
+        shap_values = explainer(X_test)
 
 
     # Bar Plot
     with left_col:
         left_col.markdown("<h4 style='text-align: center;'> Bar </h4>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_bar(shap_values, max_display=len(feature_data.columns))
+        fig, err_msg = plot_shap_bar(shap_values, max_display=len(X_test.columns))
         if fig is None:
             left_col.error(err_msg)
         else:
@@ -269,7 +328,7 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
     # Beeswarm Plot
     with middle_col:
         middle_col.markdown("<h4 style='text-align: center;'> Beeswarm </h4>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_beeswarm(shap_values, max_display=len(feature_data.columns))
+        fig, err_msg = plot_shap_beeswarm(shap_values, max_display=len(X_test.columns))
         if fig is None:
             middle_col.error(err_msg)
         else:
@@ -278,7 +337,7 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
     # Heatmap
     with right_col:
         right_col.markdown("<h4 style='text-align: center;'> Heatmap </h4>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_heatmap(shap_values, max_display=len(feature_data.columns))
+        fig, err_msg = plot_shap_heatmap(shap_values, max_display=len(X_test.columns))
         if fig is None:
             right_col.error(err_msg)
         else:

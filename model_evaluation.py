@@ -73,6 +73,10 @@ def get_rfe_features(df, _model, model_type, random_state, test_fraction):
             scaler = _model.named_steps['scaler']
             X_train = scaler.transform(X_train)
             _model = _model.named_steps['logistic_regression']
+        elif model_type == "KNN Classifier":
+            return None, "RFE cannot be performed on a KNN Classifier"
+        elif model_type == "SVM Classifier":
+            return None, "RFE cannot be performed on a SVM Classifier with a Radial Basis Function (RBF) kernel"
 
         selector = RFE(_model, n_features_to_select=1)
         selector.fit(X_train, y_train)
@@ -310,12 +314,12 @@ def get_regression_time_series_predictions(df, _model, random_state, test_fracti
         ax.fill_between(x_vals_test, lower_bound, upper_bound, alpha=0.2, label=f'{CONFIDENCE_LEVEL*100}% CI')
 
         ax.axvline(x=len(y_train), color='black', linestyle='--')
-        ax.text(0.15*len(y), y_min - 0.25*(y_max-y_min), 'Training and Validation Set', verticalalignment='center', fontsize=12)
-        ax.text(0.85*len(y), y_min - 0.25*(y_max-y_min), 'Testing Set', verticalalignment='center', fontsize=12)
+        ax.text(0.15*len(y), y_max + 0.075*(y_max-y_min), 'Training and Validation Set', verticalalignment='center', fontsize=12)
+        ax.text(0.85*len(y), y_max + 0.075*(y_max-y_min), 'Testing Set', verticalalignment='center', fontsize=12)
 
-        ax.legend(loc="upper right")
+        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.05))
         
-        ax.set_ylim(bottom=y_min - 0.5*(y_max-y_min), top=y_max + 0.5*(y_max-y_min))
+        #ax.set_ylim(bottom=y_min - 0.1*(y_max-y_min), top=y_max + 0.5*(y_max-y_min))
         ax.set_ylabel(target_name)
         ax.set_xlabel("Time Steps")
         ax.set_xticks(x_ticks)
