@@ -295,7 +295,7 @@ def get_regression_time_series_predictions(df, _model, random_state, test_fracti
 
         # Plotting
         target_name = df.columns[-1]
-        fig, ax = plt.subplots(figsize=(10,6))   
+        fig, ax = plt.subplots(figsize=(10,5))   
 
         x_vals = list(dates)
         x_vals_train = x_vals[:len(y_train)]

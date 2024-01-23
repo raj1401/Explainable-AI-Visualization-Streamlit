@@ -41,3 +41,21 @@ def create_ordered_dataframe(original_df, time_col, independent_feats, target_va
     df[independent_feats] = original_df[independent_feats]
     df[target_var] = original_df[target_var]
     return df
+
+
+def multi_time_series_loader(data_file, temp_dir):
+    if data_file is not None:
+        try:
+            with NamedTemporaryFile(mode='wb', suffix=".csv", dir=temp_dir, delete=False) as f:
+                f.write(data_file.read())
+            with open(f.name, 'r') as file:
+                df = pd.read_csv(file)
+            series_list = []
+            for i in range(len(df.columns)):
+                series_list.append(df.iloc[:,i])
+            print(series_list[0])
+            return series_list
+        except Exception as e:
+            return None
+    else:
+        return None

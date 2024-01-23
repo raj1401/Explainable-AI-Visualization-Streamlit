@@ -19,9 +19,9 @@ from model_evaluation import get_rfe_features, get_boruta_features
 from model_evaluation import get_regression_time_series_predictions, get_classification_time_series_predictions
 from model_evaluation import plot_prediction_error, get_regression_metrics
 
-from model_forecasting import forecast_from_classifier, forecast_from_regressor
+from model_forecasting import forecast_from_classifier, forecast_from_regressor, lstm_regression_forecasting
 
-from helper_functions import delete_folder_contents, data_file_loader, create_ordered_dataframe
+from helper_functions import delete_folder_contents, data_file_loader, create_ordered_dataframe, multi_time_series_loader
 
 
 # ---- GLOBAL VARIABLES ---- #
@@ -80,6 +80,9 @@ if 'TRAIN_TEST_RANDOM_STATE' not in sl.session_state:
 
 if 'TEST_FRACTION' not in sl.session_state:
     sl.session_state.TEST_FRACTION = None
+
+if 'LSTM_Model' not in sl.session_state:
+    sl.session_state.LSTM_Model = None
 
 
 # ---- HELPER FUNCTIONS ---- #
@@ -412,6 +415,34 @@ def plot_forecasts(new_data, left_col, right_col):
                 sl.download_button(label="Download Augmented Dataset", data=csv_file, file_name="augmented_dataset.csv", mime='text/csv')
 
 
+def plot_lstm_forecasts_single(input_data_file, future_steps, plot_col):
+    input_df = data_file_loader(input_data_file, temp_dir=TEMP_DIR)
+    fig, err_msg, trained_lstm = lstm_regression_forecasting(df=input_df, test_fraction=sl.session_state.TEST_FRACTION,
+                                                            random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, from_df=True,
+                                                            future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model)
+    sl.session_state.LSTM_Model = trained_lstm
+    if fig is None:
+        plot_col.write(err_msg)
+    else:
+        plot_col.write(fig)
+
+
+def plot_lstm_forecasts_multiple(input_data_file, future_steps, plot_col):
+    y_list = multi_time_series_loader(input_data_file, temp_dir=TEMP_DIR)
+    fig, err_msg, trained_lstm = lstm_regression_forecasting(df=None, y_list=y_list, test_fraction=sl.session_state.TEST_FRACTION,
+                                                            random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, from_df=False,
+                                                            future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model)
+    sl.session_state.LSTM_Model = trained_lstm
+    if fig is None:
+        plot_col.write(err_msg)
+    else:
+        plot_col.write(fig)
+
+
+def reset_lstm_model():
+    sl.session_state.LSTM_Model = None
+
+
 # ---- PAGE CONFIG ---- #
 sl.set_page_config(page_title="Explainable AI", layout='wide')
 
@@ -626,21 +657,58 @@ with sl.container():
 # ---- USING THE MODEL ON NEW DATA ---- #
 with sl.container():
     if sl.session_state.model_on_selected_feats is not None:
-        sl.markdown("<h2 style='text-align: center;'> Forecasting Using the Model </h2>", unsafe_allow_html=True)
-        # Getting New Data
-        sl.write("""You can now use the above trained model to make predictions
-                    about the target variable using your own data. Make sure that the data that you upload only has
-                    the features that were chosen above to train the final model (the first column should
-                    have the time the data points were recorded).""")
-        # sl.markdown("""<h5 style='text-align: center;'> You can now use the above trained model to make predictions
-        #             about the target variable using your own data. Make sure that the data that you upload only has
-        #             the features that were chosen above to train the final model (the first column should
-        #             have the time the data points were recorded). </h5>""", unsafe_allow_html= True)
+        sl.markdown("<h2 style='text-align: center;'> Forecasting From The Data </h2>", unsafe_allow_html=True)
+        sl.write("""
+                 Forecasting from any provided data can be a univariate or a multivariate problem. In the univariate
+                 setting, we try to predict the future values of a time-series using only the values it takes in the
+                 previous time steps. We accomplish this usually by training a Recurrent Neural Network.
+                 On the other hand, in the multivariate setting, we try to predict the future
+                 values of a time-series based on other independent variables whose values are/will be known in the future.
+        """)
+        problem_type = sl.selectbox("Problem Type", options=["Univariate", "Multivariate"], on_change=reset_lstm_model)
 
-        new_data = sl.file_uploader("New Input Data", type="csv")
-        if new_data is not None:
-            left_graph_col, right_col = sl.columns((3,1))
-            plot_forecasts(new_data, left_graph_col, right_col)
+        if problem_type == "Univariate":
+            sl.write("""We can train an LSTM, a special kind of Recurrent Neural Network (RNN) to predict future values
+                     from a periodic time-series data. Do you want to upload a DataFrame (CSV File) to predict future values of the
+                     time series it contains in its last column, or do you want to upload a DataFrame (CSV File) that contains
+                     multiple time-series data of the same target variable and same periodicity in its columns and train the LSTM on them?
+                     The latter is recommended if you have 100s of time-series data.""")
+            input_type = sl.selectbox("Input Type", options=["Single DataFrame", "Multiple Data Series"], on_change=reset_lstm_model)
+            
+            sl.write("How many time steps in the future do you want to make the predictions?")
+            future_steps = sl.number_input("Future Time Steps", min_value=20, step=1)
+
+            if input_type == "Single DataFrame":
+                single_df_data = sl.file_uploader("Single DataFrame", type="csv")
+                if single_df_data is not None:
+                    _, plot_col, _ = sl.columns((1,4,1))
+                    plot_lstm_forecasts_single(input_data_file=single_df_data, future_steps=future_steps, plot_col=plot_col)
+            
+            if input_type == "Multiple Data Series":
+                multi_df_data = sl.file_uploader("Multiple Data Series", type="csv")
+                if multi_df_data is not None:
+                    _, plot_col, _ = sl.columns((1,4,1))
+                    plot_lstm_forecasts_multiple(input_data_file=multi_df_data, future_steps=future_steps, plot_col=plot_col)
+
+            # if new_data is not None:
+            #     _, plot_col, _ = sl.columns((1,4,1))
+            #     plot_lstm_forecasts(input_type=input_type, input_data_file=new_data, future_steps=future_steps, plot_col=plot_col)
+
+        if problem_type == "Multivariate":
+            # Getting New Data
+            sl.write("""You can now use the above trained model to make predictions
+                        about the target variable using your own data. Make sure that the data that you upload only has
+                        the features that were chosen above to train the final model (the first column should
+                        have the time the data points were recorded).""")
+            # sl.markdown("""<h5 style='text-align: center;'> You can now use the above trained model to make predictions
+            #             about the target variable using your own data. Make sure that the data that you upload only has
+            #             the features that were chosen above to train the final model (the first column should
+            #             have the time the data points were recorded). </h5>""", unsafe_allow_html= True)
+
+            new_data = sl.file_uploader("New Input Data", type="csv")
+            if new_data is not None:
+                left_graph_col, right_col = sl.columns((3,1))
+                plot_forecasts(new_data, left_graph_col, right_col)
 
 
 
