@@ -415,11 +415,13 @@ def plot_forecasts(new_data, left_col, right_col):
                 sl.download_button(label="Download Augmented Dataset", data=csv_file, file_name="augmented_dataset.csv", mime='text/csv')
 
 
-def plot_lstm_forecasts_single(input_data_file, future_steps, plot_col):
+def plot_lstm_forecasts_single(input_data_file, future_steps, plot_col, batch_size, lookback, hidden_size, num_layers):
     input_df = data_file_loader(input_data_file, temp_dir=TEMP_DIR)
     fig, err_msg, trained_lstm = lstm_regression_forecasting(df=input_df, test_fraction=sl.session_state.TEST_FRACTION,
                                                             random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, from_df=True,
-                                                            future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model)
+                                                            future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model,
+                                                            batch_size=batch_size, lookback=lookback, hidden_size=hidden_size,
+                                                            num_layers=num_layers)
     sl.session_state.LSTM_Model = trained_lstm
     if fig is None:
         plot_col.write(err_msg)
@@ -427,11 +429,13 @@ def plot_lstm_forecasts_single(input_data_file, future_steps, plot_col):
         plot_col.write(fig)
 
 
-def plot_lstm_forecasts_multiple(input_data_file, future_steps, plot_col):
+def plot_lstm_forecasts_multiple(input_data_file, future_steps, plot_col, batch_size, hidden_size, num_layers):
     y_list = multi_time_series_loader(input_data_file, temp_dir=TEMP_DIR)
     fig, err_msg, trained_lstm = lstm_regression_forecasting(df=None, y_list=y_list, test_fraction=sl.session_state.TEST_FRACTION,
                                                             random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, from_df=False,
-                                                            future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model)
+                                                            future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model,
+                                                            batch_size=batch_size, hidden_size=hidden_size,
+                                                            num_layers=num_layers)
     sl.session_state.LSTM_Model = trained_lstm
     if fig is None:
         plot_col.write(err_msg)
@@ -676,19 +680,28 @@ with sl.container():
             input_type = sl.selectbox("Input Type", options=["Single DataFrame", "Multiple Data Series"], on_change=reset_lstm_model)
             
             sl.write("How many time steps in the future do you want to make the predictions?")
-            future_steps = sl.number_input("Future Time Steps", min_value=20, step=1)
+            f_col, _ = sl.columns((1,3))
+            future_steps = f_col.number_input("Future Time Steps", min_value=20, step=1)
+            sl.write("Model and Training Hyperparameters")
+            col1, col2, col3, col4 = sl.columns(4)
+            batch_size = col1.number_input("Batch Size", min_value=4, step=1, on_change=reset_lstm_model)
+            hidden_size = col2.number_input("LSTM Hidden State Size", min_value=8, step=1, on_change=reset_lstm_model)
+            num_layers = col3.number_input("Number of Hidden LSTM Layers", min_value=1, step=1, on_change=reset_lstm_model)
 
             if input_type == "Single DataFrame":
+                lookback = col4.number_input("Window Size", min_value=1, step=1, on_change=reset_lstm_model)
                 single_df_data = sl.file_uploader("Single DataFrame", type="csv")
                 if single_df_data is not None:
                     _, plot_col, _ = sl.columns((1,4,1))
-                    plot_lstm_forecasts_single(input_data_file=single_df_data, future_steps=future_steps, plot_col=plot_col)
+                    plot_lstm_forecasts_single(input_data_file=single_df_data, future_steps=future_steps, plot_col=plot_col,
+                                               batch_size=batch_size, lookback=lookback, hidden_size=hidden_size, num_layers=num_layers)
             
             if input_type == "Multiple Data Series":
                 multi_df_data = sl.file_uploader("Multiple Data Series", type="csv")
                 if multi_df_data is not None:
                     _, plot_col, _ = sl.columns((1,4,1))
-                    plot_lstm_forecasts_multiple(input_data_file=multi_df_data, future_steps=future_steps, plot_col=plot_col)
+                    plot_lstm_forecasts_multiple(input_data_file=multi_df_data, future_steps=future_steps, plot_col=plot_col,
+                                                 batch_size=batch_size, hidden_size=hidden_size, num_layers=num_layers)
 
             # if new_data is not None:
             #     _, plot_col, _ = sl.columns((1,4,1))
