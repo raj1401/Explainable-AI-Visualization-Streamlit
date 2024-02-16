@@ -3,6 +3,8 @@ import shap
 import numpy as np
 from sklearn.model_selection import train_test_split
 
+from data_preprocessing import get_preprocessing_needs_table
+
 from model_creation_and_training import create_and_search_tree_classifier, train_final_classifier
 from model_creation_and_training import create_and_search_tree_regressor, train_final_regressor
 
@@ -467,7 +469,7 @@ sl.markdown("""
 sl.write('---')
 
 # ---- INPUT PARAMETERS ---- #
-sl.subheader("Input Parameters")
+sl.subheader("Input Data")
 
 # with sl.container():
 #     data_col, model_col = sl.columns((3,2))
@@ -494,11 +496,18 @@ with sl.container():
         sl.session_state.target_var = sl.selectbox("Target Variable", options=sl.session_state.all_col_names)
 
     if ((sl.session_state.time_col is not None) and
-        (sl.session_state.independent_feats is not None) and
+        (sl.session_state.independent_feats != []) and
         (sl.session_state.target_var is not None)):
         sl.session_state.dataframe = create_ordered_dataframe(sl.session_state.original_df, sl.session_state.time_col, 
                                                               sl.session_state.independent_feats, sl.session_state.target_var)
         
+        sl.subheader("Data Preprocessing")
+        if sl.button("Check Preprocessing Needs", use_container_width=True):
+            sl.write("The following table shows the preprocessing needs of your data:")
+            preprocessing_table = get_preprocessing_needs_table(sl.session_state.dataframe)
+            sl.table(preprocessing_table)
+        
+        sl.subheader("Model Selection")
         sl.write("Now you must select the model you want to use for training, based on the task at hand.")
         sl.write("Models Available:")
         model_table = {"Classification Models":sl.session_state.classification_models, "Regression Models":sl.session_state.regression_models}
