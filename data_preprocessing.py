@@ -72,17 +72,16 @@ def detect_need_for_scaling(df: pd.DataFrame):
 
 
 def get_preprocessing_needs_table(df):
-    perc_null_values = detect_null_values(df)
+    perc_null_values = round(detect_null_values(df), 2)
     inconsistency_types = detect_inconsistent_types(df)
     inconsistency = f"date: {inconsistency_types[0]}, target: {inconsistency_types[1]}, features: {inconsistency_types[2]}"
-    perc_duplicates = detect_duplicates(df)
-    perc_outliers = detect_outliers(df)
+    perc_duplicates = round(detect_duplicates(df), 2)
+    perc_outliers = round(detect_outliers(df), 2)
     needs_scaling = detect_need_for_scaling(df)
 
-    return {
-        'Percentage of Null Values': perc_null_values,
-        'Inconsistent Data Types': inconsistency,
-        'Percentage of Duplicates': perc_duplicates,
-        'Percentange of Outliers': perc_outliers,
-        'Data Needs Scaling': needs_scaling
-    }
+    table = pd.DataFrame({
+        'Type': ['Percentage of Null Values', 'Inconsistent Types', 'Percentage of Duplicates', 'Percentage of Outliers', 'Need for Scaling'],
+        'Value': [perc_null_values, inconsistency, perc_duplicates, perc_outliers, needs_scaling]
+    })
+
+    return table
