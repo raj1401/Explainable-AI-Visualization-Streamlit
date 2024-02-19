@@ -3,7 +3,8 @@ import shap
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from data_preprocessing import get_preprocessing_needs_table
+from data_preprocessing import get_preprocessing_needs_table, plot_data
+from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features
 
 from model_creation_and_training import create_and_search_tree_classifier, train_final_classifier
 from model_creation_and_training import create_and_search_tree_regressor, train_final_regressor
@@ -65,6 +66,9 @@ if 'final_params' not in sl.session_state:
 if 'dataframe' not in sl.session_state:
     sl.session_state.dataframe = None
 
+if 'processed_df' not in sl.session_state:
+    sl.session_state.processed_df = None
+
 if 'feats_selected_df' not in sl.session_state:
     sl.session_state.feats_selected_df = None
 
@@ -99,7 +103,7 @@ def on_click_search_params():
         }
 
         with sl.spinner("Searching for Optimum Parameters"):
-            params_, model_ = create_and_search_tree_classifier(df=sl.session_state.dataframe, param_distributions=param_distributions)
+            params_, model_ = create_and_search_tree_classifier(df=sl.session_state.processed_df, param_distributions=param_distributions)
         sl.session_state.search_results["params"] = params_
         sl.session_state.search_results["model"] = model_
     
@@ -113,7 +117,7 @@ def on_click_search_params():
         }
 
         with sl.spinner("Searching for Optimum Parameters:"):
-            params_, model_ = create_and_search_tree_regressor(df=sl.session_state.dataframe, param_distributions=param_distributions)
+            params_, model_ = create_and_search_tree_regressor(df=sl.session_state.processed_df, param_distributions=param_distributions)
         sl.session_state.search_results["params"] = params_
         sl.session_state.search_results["model"] = model_
     
@@ -124,7 +128,7 @@ def on_click_search_params():
         }
 
         with sl.spinner("Searching for Optimum Parameters:"):
-            params_, model_ = create_and_search_logistic_regression(df=sl.session_state.dataframe, param_distributions=param_distributions)
+            params_, model_ = create_and_search_logistic_regression(df=sl.session_state.processed_df, param_distributions=param_distributions)
         sl.session_state.search_results["params"] = params_
         sl.session_state.search_results["model"] = model_
 
@@ -136,7 +140,7 @@ def on_click_search_params():
         }
 
         with sl.spinner("Searching for Optimum Parameters:"):
-            params_, model_ = create_and_Search_KNN_classifer(df=sl.session_state.dataframe, param_distributions=param_distributions)
+            params_, model_ = create_and_Search_KNN_classifer(df=sl.session_state.processed_df, param_distributions=param_distributions)
         sl.session_state.search_results["params"] = params_
         sl.session_state.search_results["model"] = model_
     
@@ -146,7 +150,7 @@ def on_click_search_params():
         }
 
         with sl.spinner("Searching for Optimum Parameters:"):
-            params_, model_ = create_and_Search_SVM_classifer(df=sl.session_state.dataframe, param_distributions=param_distributions)
+            params_, model_ = create_and_Search_SVM_classifer(df=sl.session_state.processed_df, param_distributions=param_distributions)
         sl.session_state.search_results["params"] = params_
         sl.session_state.search_results["model"] = model_
 
@@ -165,33 +169,74 @@ def reset_on_change_feat_select():
     sl.session_state.model_on_selected_feats = None
 
 
+def plot_initial_data(plt_col):
+    fig, err_msg = plot_data(sl.session_state.processed_df)
+    if fig is None:
+        plt_col.error(err_msg)
+    else:
+        plt_col.write(fig)
+
+
+def remove_null_values_in_data():
+    sl.session_state.processed_df = fill_null_values(sl.session_state.processed_df)
+
+
+def fix_inconsistent_types_in_data():
+    sl.session_state.processed_df = fix_inconsistent_types(sl.session_state.processed_df)
+
+
+def remove_duplicates_in_data():
+    sl.session_state.processed_df = remove_duplicates(sl.session_state.processed_df)
+
+
+def remove_outliers_in_data():
+    sl.session_state.processed_df = remove_outliers(sl.session_state.processed_df)
+
+
+def normalize_data():
+    sl.session_state.processed_df = scale_features(sl.session_state.processed_df)
+
+
+def write_preprocessing_needs_table():
+    sl.write("The following table shows the preprocessing needs of your data:")
+    preprocessing_table = get_preprocessing_needs_table(sl.session_state.processed_df)
+    sl.table(preprocessing_table.transpose())
+
+    cols = sl.columns(5)
+    cols[0].button("Remove Null Values", on_click=remove_null_values_in_data)
+    cols[1].button("Fix Inconsistent Types", on_click=fix_inconsistent_types_in_data)
+    cols[2].button("Remove Duplicates", on_click=remove_duplicates_in_data)
+    cols[3].button("Remove Outliers", on_click=remove_outliers_in_data)
+    cols[4].button("Normalize Data", on_click=normalize_data)
+
+
 def train_final_model():
     if model_type == "Random Forest Classifier":
-        final_model, rand_state, test_fraction = train_final_classifier(df=sl.session_state.dataframe, param_distributions=sl.session_state.final_params)
+        final_model, rand_state, test_fraction = train_final_classifier(df=sl.session_state.processed_df, param_distributions=sl.session_state.final_params)
         sl.session_state.final_model = final_model
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
     
     elif model_type == "Random Forest Regressor":
-        final_model, rand_state, test_fraction = train_final_regressor(df=sl.session_state.dataframe, param_distributions=sl.session_state.final_params)
+        final_model, rand_state, test_fraction = train_final_regressor(df=sl.session_state.processed_df, param_distributions=sl.session_state.final_params)
         sl.session_state.final_model = final_model
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
     
     elif model_type == "Logistic Regression":
-        final_model, rand_state, test_fraction = train_final_logistic_regression(df=sl.session_state.dataframe, param_distributions=sl.session_state.final_params)
+        final_model, rand_state, test_fraction = train_final_logistic_regression(df=sl.session_state.processed_df, param_distributions=sl.session_state.final_params)
         sl.session_state.final_model = final_model
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
     
     elif model_type == "KNN Classifier":
-        final_model, rand_state, test_fraction = train_final_KNN_classifier(df=sl.session_state.dataframe, param_distributions=sl.session_state.final_params)
+        final_model, rand_state, test_fraction = train_final_KNN_classifier(df=sl.session_state.processed_df, param_distributions=sl.session_state.final_params)
         sl.session_state.final_model = final_model
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
     
     elif model_type == "SVM Classifier":
-        final_model, rand_state, test_fraction = train_final_SVM_classifier(df=sl.session_state.dataframe, param_distributions=sl.session_state.final_params)
+        final_model, rand_state, test_fraction = train_final_SVM_classifier(df=sl.session_state.processed_df, param_distributions=sl.session_state.final_params)
         sl.session_state.final_model = final_model
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
@@ -501,11 +546,28 @@ with sl.container():
         sl.session_state.dataframe = create_ordered_dataframe(sl.session_state.original_df, sl.session_state.time_col, 
                                                               sl.session_state.independent_feats, sl.session_state.target_var)
         
+        if sl.button("Submit Features"):
+            sl.session_state.processed_df = sl.session_state.dataframe.copy(deep=True)
+            sl.success("Features Submitted!")
         sl.subheader("Data Preprocessing")
+        _, plt_col, _ = sl.columns((1,4,1))
+        # _, preprocess_col, _ = sl.columns((1,4,1))
         if sl.button("Check Preprocessing Needs", use_container_width=True):
-            sl.write("The following table shows the preprocessing needs of your data:")
-            preprocessing_table = get_preprocessing_needs_table(sl.session_state.dataframe)
-            sl.table(preprocessing_table)
+            plot_initial_data(plt_col)
+            write_preprocessing_needs_table()
+            # sl.write("The following table shows the preprocessing needs of your data:")
+            # preprocessing_table = get_preprocessing_needs_table(sl.session_state.dataframe)
+            # sl.table(preprocessing_table)
+
+            # cols = sl.columns(5)
+            # cols[0].button("Remove Null Values")
+            # cols[1].button("Fix Inconsistent Types")
+            # cols[2].button("Remove Duplicates")
+            # cols[3].button("Remove Outliers")
+            # cols[4].button("Normalize Data")
+
+        # with preprocess_col:
+        #     sl.button("Check Preprocessing Needs", use_container_width=True, on_click=write_preprocessing_needs_table)
         
         sl.subheader("Model Selection")
         sl.write("Now you must select the model you want to use for training, based on the task at hand.")
@@ -585,20 +647,20 @@ with sl.container():
                 # SHAP Values
                 sl.markdown("<h3 style='text-align: center;'> SHAP Values </h3>", unsafe_allow_html=True)
                 left_shap_col, middle_shap_col, right_shap_col = sl.columns(3)
-                plot_shap_graphs(left_shap_col, middle_shap_col, right_shap_col, sl.session_state.dataframe, sl.session_state.final_model)
+                plot_shap_graphs(left_shap_col, middle_shap_col, right_shap_col, sl.session_state.processed_df, sl.session_state.final_model)
             
             # IMPLEMENT RFE AND BARUTA LATER
             if "Recursive Feature Elimination" in feature_selection_algorithms:
                 # RFE Values
                 sl.markdown("<h3 style='text-align: center;'> Recursive Feature Elimination </h3>", unsafe_allow_html=True)
                 _, middle_rfe_col, _ = sl.columns(3)
-                plot_rfe_features(middle_rfe_col, sl.session_state.dataframe, sl.session_state.final_model)
+                plot_rfe_features(middle_rfe_col, sl.session_state.processed_df, sl.session_state.final_model)
             
             if "Boruta" in feature_selection_algorithms:
                 # Boruta Values
                 sl.markdown("<h3 style='text-align: center;'> Boruta Algorithm </h3>", unsafe_allow_html=True)
                 _, middle_rfe_col, _ = sl.columns(3)                
-                plot_boruta_features(middle_rfe_col, sl.session_state.dataframe)
+                plot_boruta_features(middle_rfe_col, sl.session_state.processed_df)
 
 
             if len(feature_selection_algorithms) != 0:
@@ -607,7 +669,7 @@ with sl.container():
                 new_features = sl.multiselect("Features", options=sl.session_state.independent_feats, on_change=trigger_training_on_selected_features)
                 
                 if len(new_features) != 0:
-                    sl.session_state.feats_selected_df = create_ordered_dataframe(sl.session_state.dataframe, sl.session_state.time_col, 
+                    sl.session_state.feats_selected_df = create_ordered_dataframe(sl.session_state.processed_df, sl.session_state.time_col, 
                                                                                   new_features, sl.session_state.target_var)
                     # sl.session_state.feats_selected_df = sl.session_state.dataframe.loc[:,new_features].copy(deep=True)
                     # sl.session_state.feats_selected_df[list(sl.session_state.dataframe.columns)[-1]] = sl.session_state.dataframe.iloc[:,-1].copy(deep=True)
