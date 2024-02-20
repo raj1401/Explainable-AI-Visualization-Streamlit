@@ -83,6 +83,8 @@ def get_rfe_features(df, _model, model_type, random_state, test_fraction):
             return None, "RFE cannot be performed on a KNN Regressor"
         elif model_type == "SVM Classifier":
             return None, "RFE cannot be performed on a SVM Classifier with a Radial Basis Function (RBF) kernel"
+        elif model_type == "SVM Regressor":
+            return None, "RFE cannot be performed on a SVM Regressor with a Radial Basis Function (RBF) kernel"
 
         selector = RFE(_model, n_features_to_select=1)
         selector.fit(X_train, y_train)

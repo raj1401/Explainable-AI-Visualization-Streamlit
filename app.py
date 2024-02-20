@@ -16,6 +16,7 @@ from model_creation_and_training import create_and_Search_KNN_classifer, train_f
 from model_creation_and_training import create_and_Search_KNN_regressor, train_final_KNN_regressor
 
 from model_creation_and_training import create_and_Search_SVM_classifer, train_final_SVM_classifier
+from model_creation_and_training import create_and_Search_SVM_regressor, train_final_SVM_regressor
 
 from model_creation_and_training import get_lead_lag_correlations, shift_dataframe
 
@@ -179,6 +180,16 @@ def on_click_search_params():
             params_, model_ = create_and_Search_SVM_classifer(df=sl.session_state.processed_df, param_distributions=param_distributions)
         sl.session_state.search_results["params"] = params_
         sl.session_state.search_results["model"] = model_
+    
+    elif model_type == "SVM Regressor":
+        param_distributions = {
+            'svm_regressor__C': np.arange(start=0, stop=10, step=0.2)
+        }
+
+        with sl.spinner("Searching for Optimum Parameters:"):
+            params_, model_ = create_and_Search_SVM_regressor(df=sl.session_state.processed_df, param_distributions=param_distributions)
+        sl.session_state.search_results["params"] = params_
+        sl.session_state.search_results["model"] = model_
 
 def reset_params():
     sl.session_state.search_results = {}
@@ -306,6 +317,12 @@ def train_final_model():
         sl.session_state.final_model = final_model
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
+    
+    elif model_type == "SVM Regressor":
+        final_model, rand_state, test_fraction = train_final_SVM_regressor(df=sl.session_state.processed_df, param_distributions=sl.session_state.final_params)
+        sl.session_state.final_model = final_model
+        sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
+        sl.session_state.TEST_FRACTION = test_fraction
 
 
 def trigger_training_on_selected_features():
@@ -334,6 +351,9 @@ def train_model_on_selected_feats():
     elif model_type == "SVM Classifier":
         model, _, _ = train_final_SVM_classifier(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
         sl.session_state.model_on_selected_feats = model
+    elif model_type == "SVM Regressor":
+        model, _, _ = train_final_SVM_regressor(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
+        sl.session_state.model_on_selected_feats = model
 
 
 def train_shifted_model(train_df):
@@ -357,6 +377,9 @@ def train_shifted_model(train_df):
         return shifted_model
     elif model_type == "SVM Classifier":
         shifted_model, _, _ = train_final_SVM_classifier(df=train_df, param_distributions=sl.session_state.final_params)
+        return shifted_model
+    elif model_type == "SVM Regressor":
+        shifted_model, _, _ = train_final_SVM_regressor(df=train_df, param_distributions=sl.session_state.final_params)
         return shifted_model
 
 
@@ -445,18 +468,31 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
         back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
         explainer = shap.KernelExplainer(model.named_steps['knn_classifier'].predict, back_dist)
         shap_values = explainer.shap_values(X_test)
+        base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
+        shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
     elif model_type == "KNN Regressor":
         # back_dist = X_train.median().values.reshape((1, X_train.shape[1]))
         back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
         explainer = shap.KernelExplainer(model.named_steps['knn_regressor'].predict, back_dist)
         shap_values = explainer.shap_values(X_test)
+        base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
+        shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
     elif model_type == "SVM Classifier":
         back_dist = shap.utils.sample(X_train, int(0.05*len(X_train.iloc[:,0])))
         # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
-        explainer = shap.KernelExplainer(model.named_steps['svm_classifier'].predict, back_dist)
+        explainer = shap.KernelExplainer(model.named_steps['svm_classifier'].predict_proba, back_dist)
         shap_values = explainer.shap_values(X_test)
+        base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
+        shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+    elif model_type == "SVM Regressor":
+        back_dist = shap.utils.sample(X_train, int(0.05*len(X_train.iloc[:,0])))
+        # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
+        explainer = shap.KernelExplainer(model.named_steps['svm_regressor'].predict, back_dist)
+        shap_values = explainer.shap_values(X_test)
+        base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
+        shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
 
-
+    print(shap_values)
     # Bar Plot
     with left_col:
         left_col.markdown("<h4 style='text-align: center;'> Bar </h4>", unsafe_allow_html=True)
