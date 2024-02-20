@@ -73,6 +73,10 @@ def get_rfe_features(df, _model, model_type, random_state, test_fraction):
             scaler = _model.named_steps['scaler']
             X_train = scaler.transform(X_train)
             _model = _model.named_steps['logistic_regression']
+        elif model_type == "Linear Regression":
+            scaler = _model.named_steps['scaler']
+            X_train = scaler.transform(X_train)
+            _model = _model.named_steps['linear_regression']
         elif model_type == "KNN Classifier":
             return None, "RFE cannot be performed on a KNN Classifier"
         elif model_type == "SVM Classifier":

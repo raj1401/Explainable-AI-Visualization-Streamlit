@@ -10,6 +10,7 @@ from model_creation_and_training import create_and_search_tree_classifier, train
 from model_creation_and_training import create_and_search_tree_regressor, train_final_regressor
 
 from model_creation_and_training import create_and_search_logistic_regression, train_final_logistic_regression
+from model_creation_and_training import create_and_search_linear_regression, train_final_linear_regression
 
 from model_creation_and_training import create_and_Search_KNN_classifer, train_final_KNN_classifier
 from model_creation_and_training import create_and_Search_SVM_classifer, train_final_SVM_classifier
@@ -31,10 +32,10 @@ from helper_functions import delete_folder_contents, data_file_loader, create_or
 TEMP_DIR = "temp_data"
 
 if 'classification_models' not in sl.session_state:
-    sl.session_state.classification_models = ["Random Forest Classifier", "Logistic Regression", "KNN Classifier", "SVM Classifier", "Fully-Connected Deep Neural Network Classification"]
+    sl.session_state.classification_models = ["Random Forest Classifier", "Logistic Regression", "KNN Classifier", "SVM Classifier"]
 
 if 'regression_models' not in sl.session_state:
-    sl.session_state.regression_models = ["Random Forest Regressor", "Linear Regression", "KNN Regression", "SVM Regression", "Fully-Connected Deep Neural Network Regression"]
+    sl.session_state.regression_models = ["Random Forest Regressor", "Linear Regression", "KNN Regression", "SVM Regression"]
 
 if 'all_models' not in sl.session_state:
     sl.session_state.all_models = sl.session_state.classification_models + sl.session_state.regression_models
@@ -129,6 +130,17 @@ def on_click_search_params():
 
         with sl.spinner("Searching for Optimum Parameters:"):
             params_, model_ = create_and_search_logistic_regression(df=sl.session_state.processed_df, param_distributions=param_distributions)
+        sl.session_state.search_results["params"] = params_
+        sl.session_state.search_results["model"] = model_
+    
+    elif model_type == "Linear Regression":
+        param_distributions = {
+            'linear_regression__alpha': np.arange(0, 10, 0.2),
+            'linear_regression__l1_ratio': np.arange(0, 1, 0.1)
+        }
+
+        with sl.spinner("Searching for Optimum Parameters:"):
+            params_, model_ = create_and_search_linear_regression(df=sl.session_state.processed_df, param_distributions=param_distributions)
         sl.session_state.search_results["params"] = params_
         sl.session_state.search_results["model"] = model_
 
@@ -257,6 +269,12 @@ def train_final_model():
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
     
+    elif model_type == "Linear Regression":
+        final_model, rand_state, test_fraction = train_final_linear_regression(df=sl.session_state.processed_df, param_distributions=sl.session_state.final_params)
+        sl.session_state.final_model = final_model
+        sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
+        sl.session_state.TEST_FRACTION = test_fraction
+    
     elif model_type == "KNN Classifier":
         final_model, rand_state, test_fraction = train_final_KNN_classifier(df=sl.session_state.processed_df, param_distributions=sl.session_state.final_params)
         sl.session_state.final_model = final_model
@@ -281,6 +299,12 @@ def train_model_on_selected_feats():
     elif model_type == "Random Forest Regressor":
         model, _, _ = train_final_regressor(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
         sl.session_state.model_on_selected_feats = model
+    elif model_type == "Logistic Regression":
+        model, _, _ = train_final_logistic_regression(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
+        sl.session_state.model_on_selected_feats = model
+    elif model_type == "Linear Regression":
+        model, _, _ = train_final_linear_regression(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
+        sl.session_state.model_on_selected_feats = model
     elif model_type == "KNN Classifier":
         model, _, _ = train_final_KNN_classifier(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
         sl.session_state.model_on_selected_feats = model
@@ -298,6 +322,9 @@ def train_shifted_model(train_df):
         return shifted_model
     elif model_type == "Logistic Regression":
         shifted_model, _, _ = train_final_logistic_regression(df=train_df, param_distributions=sl.session_state.final_params)
+        return shifted_model
+    elif model_type == "Linear Regression":
+        shifted_model, _, _ = train_final_linear_regression(df=train_df, param_distributions=sl.session_state.final_params)
         return shifted_model
     elif model_type == "KNN Classifier":
         shifted_model, _, _ = train_final_KNN_classifier(df=train_df, param_distributions=sl.session_state.final_params)
@@ -382,6 +409,10 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
     elif model_type == "Logistic Regression":
         back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
         explainer = shap.Explainer(model.named_steps['logistic_regression'], back_dist)
+        shap_values = explainer(X_test)
+    elif model_type == "Linear Regression":
+        back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
+        explainer = shap.Explainer(model.named_steps['linear_regression'], back_dist)
         shap_values = explainer(X_test)
     elif model_type == "KNN Classifier":
         back_dist = X_train.median().values.reshape((1, X_train.shape[1]))
