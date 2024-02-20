@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 
 def detect_null_values(df: pd.DataFrame):
@@ -95,7 +96,7 @@ def get_preprocessing_needs_table(df):
         'Type': ['Percentage of Null Values', 'Inconsistent Types', 'Percentage of Duplicates', 'Percentage of Outliers', 'Need for Scaling'],
         'Value': [perc_null_values, inconsistency, perc_duplicates, perc_outliers, needs_scaling]
     })
-
+    
     return table
 
 
@@ -167,26 +168,49 @@ def plot_data(df: pd.DataFrame):
         feature_columns = df.columns[1:-1]
 
         dates = df[date_column].astype(str)
-        xticks = dates.iloc[::len(dates)//20]
+        xticks = dates.iloc[::len(dates)//10]
 
-        fig, ax = plt.subplots(2, 1, figsize=(10, 5))
+        total_plots = len(feature_columns) + 1
+        ax_num = math.ceil(math.sqrt(total_plots))
+
+        if total_plots <= ax_num * (ax_num - 1):
+            ncols = ax_num
+            nrows = math.ceil(total_plots / ncols)
+        else:
+            nrows = ax_num
+            ncols = math.ceil(total_plots / nrows)
+
+        fig, ax = plt.subplots(nrows, ncols, figsize=(10, 8))
 
         # Plot each feature column against date column
+        i, j = 0, 0
         for feature in feature_columns:
-            ax[0].plot(df[date_column], df[feature], label=feature)
-        
-        ax[0].legend(loc="upper right", bbox_to_anchor=(1.2, 1.05))
-        ax[0].set_ylabel('Feature Variables')
+            ax[i][j].plot(df[date_column], df[feature], label=feature)
+            ax[i][j].set_xlabel("Dates")
+            ax[i][j].set_ylabel(feature)
+            ax[i][j].set_xticks(xticks)
+            ax[i][j].set_xticklabels(xticks, rotation=90)
 
-        ax[0].set_title('Data Visualization')
-        ax[0].set_xticks([])
+            if j == ax_num - 1:
+                i += 1
+                j = 0
+            else:
+                j += 1
+        
+        # ax[0].legend(loc="upper right", bbox_to_anchor=(1.2, 1.05))
+        # ax[0].set_ylabel('Feature Variables')
+
+        # ax[0].set_title('Data Visualization')
+        # ax[0].set_xticks([])
         # Plot target column against date column
-        ax[1].plot(df[date_column], df[target_column], label=target_column, color='black')
-        ax[1].set_xlabel("Dates")
-        ax[1].set_xticks(xticks)
-        ax[1].set_xticklabels(xticks, rotation=90)
-        ax[1].set_ylabel('Target Variable')
-        ax[1].legend(loc="upper right", bbox_to_anchor=(1.2, 0.2))
+        ax[i][j].plot(df[date_column], df[target_column], label=target_column, color='black')
+        ax[i][j].set_xlabel("Dates")
+        ax[i][j].set_xticks(xticks)
+        ax[i][j].set_xticklabels(xticks, rotation=90)
+        ax[i][j].set_ylabel('Target Variable')
+
+        fig.suptitle('Data Visualization', fontsize=16)
+        plt.tight_layout()        
         return fig, None
     except Exception as e:
         return None, e

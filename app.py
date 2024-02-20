@@ -197,16 +197,44 @@ def normalize_data():
     sl.session_state.processed_df = scale_features(sl.session_state.processed_df)
 
 
+# def write_preprocessing_needs_table():
+#     sl.write("The following table shows the preprocessing needs of your data:")
+#     preprocessing_table = get_preprocessing_needs_table(sl.session_state.processed_df)
+#     sl.table(preprocessing_table.transpose())
+
+#     sl.markdown(preprocessing_table.transpose().style.hide(axis="index").to_html(), unsafe_allow_html=True)
+
+#     cols = sl.columns(5)
+#     cols[0].button("Remove Null Values", on_click=remove_null_values_in_data)
+#     cols[1].button("Fix Inconsistent Types", on_click=fix_inconsistent_types_in_data)
+#     cols[2].button("Remove Duplicates", on_click=remove_duplicates_in_data)
+#     cols[3].button("Remove Outliers", on_click=remove_outliers_in_data)
+#     cols[4].button("Normalize Data", on_click=normalize_data)
+
+
 def write_preprocessing_needs_table():
     sl.write("The following table shows the preprocessing needs of your data:")
     preprocessing_table = get_preprocessing_needs_table(sl.session_state.processed_df)
-    sl.table(preprocessing_table.transpose())
-
     cols = sl.columns(5)
+
+    cols[0].write("Percentage of Null Values")
+    cols[0].write(preprocessing_table.iloc[0,1])
     cols[0].button("Remove Null Values", on_click=remove_null_values_in_data)
+
+    cols[1].write("Inconsistent Types")
+    cols[1].write(preprocessing_table.iloc[1,1])
     cols[1].button("Fix Inconsistent Types", on_click=fix_inconsistent_types_in_data)
+
+    cols[2].write("Percentage of Duplicates")
+    cols[2].write(preprocessing_table.iloc[2,1])
     cols[2].button("Remove Duplicates", on_click=remove_duplicates_in_data)
+
+    cols[3].write("Percentage of Outliers")
+    cols[3].write(preprocessing_table.iloc[3,1])
     cols[3].button("Remove Outliers", on_click=remove_outliers_in_data)
+
+    cols[4].write("Data Normalized")
+    cols[4].write(preprocessing_table.iloc[4,1])
     cols[4].button("Normalize Data", on_click=normalize_data)
 
 
@@ -550,9 +578,9 @@ with sl.container():
             sl.session_state.processed_df = sl.session_state.dataframe.copy(deep=True)
             sl.success("Features Submitted!")
         sl.subheader("Data Preprocessing")
-        _, plt_col, _ = sl.columns((1,4,1))
         # _, preprocess_col, _ = sl.columns((1,4,1))
         if sl.button("Check Preprocessing Needs", use_container_width=True):
+            _, plt_col, _ = sl.columns((1,4,1))
             plot_initial_data(plt_col)
             write_preprocessing_needs_table()
             # sl.write("The following table shows the preprocessing needs of your data:")
