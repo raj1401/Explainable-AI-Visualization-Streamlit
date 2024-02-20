@@ -625,7 +625,8 @@ def reset_lstm_model():
 sl.set_page_config(page_title="Explainable AI", layout='wide')
 
 # ---- HEADER SECTION ---- #
-sl.markdown("<h1 style='text-align: center;'> Explainable AI - Modeling and Visualization </h1>", unsafe_allow_html=True)
+sl.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
+sl.markdown("<h3 style='text-align: center;'> Explainable AI: Modeling and Visualization </h1>", unsafe_allow_html=True)
 sl.markdown("<h5 style='text-align: center;'> Made By Raj Mehta </h5>", unsafe_allow_html=True)
 
 sl.write('---')
@@ -635,7 +636,9 @@ sl.markdown("""
             Furthermore, it allows you to visualize its performance and compute feature importance using 
             various techniques such as SHAP, Recursive Feature Elimination (RFE), and Boruta algorithm. 
             Using the most important features computed using these techniques, you can train a final 
-            machine learning model that can be used for forecasting future trends in your data.
+            machine learning model that can be used for forecasting future trends in your data. This
+            app also allows you to train a standalone univariate time series forecasting model using
+            LSTM networks.
 """)
 
 sl.write('---')
