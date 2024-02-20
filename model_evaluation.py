@@ -79,6 +79,8 @@ def get_rfe_features(df, _model, model_type, random_state, test_fraction):
             _model = _model.named_steps['linear_regression']
         elif model_type == "KNN Classifier":
             return None, "RFE cannot be performed on a KNN Classifier"
+        elif model_type == "KNN Regressor":
+            return None, "RFE cannot be performed on a KNN Regressor"
         elif model_type == "SVM Classifier":
             return None, "RFE cannot be performed on a SVM Classifier with a Radial Basis Function (RBF) kernel"
 

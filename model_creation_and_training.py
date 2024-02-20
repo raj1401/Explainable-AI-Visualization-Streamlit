@@ -4,7 +4,7 @@ from helper_functions import delete_folder_contents
 
 from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.linear_model import LogisticRegression, ElasticNet
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.svm import SVC
 
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
@@ -297,6 +297,62 @@ def train_final_KNN_classifier(df, **kwargs):
     dates = df.iloc[:,0].astype(str)
     X, y = df.iloc[:,1:-1], df.iloc[:,-1]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=True, stratify=y, random_state=RANDOM_STATE)
+
+    pipeline.fit(X=X_train, y=y_train)
+
+    return pipeline, RANDOM_STATE, TEST_FRACTION
+
+
+# ---------- KNN REGRESSOR ----------------- #
+
+@sl.cache_resource
+def create_and_Search_KNN_regressor(df, **kwargs):
+    param_distributions = kwargs['param_distributions']
+
+    pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('knn_regressor', KNeighborsRegressor())
+    ])
+
+    scoring = make_scorer(lambda y_true, y_pred: (f1_score(y_true, y_pred, pos_label=0) + f1_score(y_true, y_pred, pos_label=1)) / 2)
+
+    random_search = RandomizedSearchCV(
+        pipeline,
+        param_distributions=param_distributions,
+        n_iter=NUM_ITERS,
+        cv=CROSS_VALID,
+        n_jobs=-1,
+        scoring=scoring,
+        random_state=42,
+        verbose=0
+    )
+
+    dates = df.iloc[:,0].astype(str)
+    X, y = df.iloc[:,1:-1], df.iloc[:,-1]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=False, random_state=RANDOM_STATE)
+
+    random_search.fit(X_train, y_train)
+
+    best_params = random_search.best_params_
+    best_model = random_search.best_estimator_
+
+    return best_params, best_model
+
+
+@sl.cache_resource
+def train_final_KNN_regressor(df, **kwargs):
+    param_distributions = kwargs['param_distributions']
+
+    pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('knn_regressor', KNeighborsRegressor())
+    ])
+
+    pipeline.set_params(**param_distributions)
+
+    dates = df.iloc[:,0].astype(str)
+    X, y = df.iloc[:,1:-1], df.iloc[:,-1]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_FRACTION, shuffle=False, random_state=RANDOM_STATE)
 
     pipeline.fit(X=X_train, y=y_train)
 
