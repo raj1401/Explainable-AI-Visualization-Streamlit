@@ -270,7 +270,7 @@ def write_preprocessing_needs_table():
     cols[3].write(preprocessing_table.iloc[3,1])
     cols[3].button("Remove Outliers", on_click=remove_outliers_in_data)
 
-    cols[4].write("Data Normalized")
+    cols[4].write("Need for Scaling")
     cols[4].write(preprocessing_table.iloc[4,1])
     cols[4].button("Normalize Data", on_click=normalize_data)
 
@@ -626,8 +626,8 @@ sl.set_page_config(page_title="Explainable AI", layout='wide')
 
 # ---- HEADER SECTION ---- #
 sl.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
-sl.markdown("<h3 style='text-align: center;'> Explainable AI: Modeling and Visualization </h1>", unsafe_allow_html=True)
-sl.markdown("<h5 style='text-align: center;'> Made By Raj Mehta </h5>", unsafe_allow_html=True)
+# sl.markdown("<h3 style='text-align: center;'> Explainable AI: Modeling and Visualization </h1>", unsafe_allow_html=True)
+# sl.markdown("<h5 style='text-align: center;'> Made By Raj Mehta </h5>", unsafe_allow_html=True)
 
 sl.write('---')
 

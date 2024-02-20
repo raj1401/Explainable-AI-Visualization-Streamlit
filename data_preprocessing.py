@@ -38,16 +38,27 @@ def detect_duplicates(df: pd.DataFrame):
 
 
 def detect_outliers(df: pd.DataFrame):
-    # Assume last column is target variable
-    target_column = df.columns[-1]
-    # Calculate percentage of outliers in target variable
-    q1 = df[target_column].quantile(0.25)
-    q3 = df[target_column].quantile(0.75)
-    iqr = q3 - q1
-    lower_bound = q1 - (1.5 * iqr)
-    upper_bound = q3 + (1.5 * iqr)
-    outliers = df[(df[target_column] < lower_bound) | (df[target_column] > upper_bound)]
-    return (outliers.shape[0] / df.shape[0]) * 100
+    num_outliers = 0
+    for col in df.columns[1:-1]:
+        q1 = df[col].quantile(0.25)
+        q3 = df[col].quantile(0.75)
+        iqr = q3 - q1
+        lower_bound = q1 - (1.5 * iqr)
+        upper_bound = q3 + (1.5 * iqr)
+        outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)]
+        num_outliers += outliers.shape[0]
+    
+    return (num_outliers / df.shape[0]) * 100
+    # # Assume last column is target variable
+    # target_column = df.columns[-1]
+    # # Calculate percentage of outliers in target variable
+    # q1 = df[target_column].quantile(0.25)
+    # q3 = df[target_column].quantile(0.75)
+    # iqr = q3 - q1
+    # lower_bound = q1 - (1.5 * iqr)
+    # upper_bound = q3 + (1.5 * iqr)
+    # outliers = df[(df[target_column] < lower_bound) | (df[target_column] > upper_bound)]
+    # return (outliers.shape[0] / df.shape[0]) * 100
 
 
 def check_similarity(vals_list, range_threshold, std_threshold):
@@ -136,15 +147,22 @@ def remove_duplicates(df: pd.DataFrame):
 
 
 def remove_outliers(df: pd.DataFrame):
-    # Assume last column is target variable
-    target_column = df.columns[-1]
-    # Remove outliers from target variable
-    q1 = df[target_column].quantile(0.25)
-    q3 = df[target_column].quantile(0.75)
-    iqr = q3 - q1
-    lower_bound = q1 - (1.5 * iqr)
-    upper_bound = q3 + (1.5 * iqr)
-    df = df[(df[target_column] > lower_bound) & (df[target_column] < upper_bound)]
+    for col in df.columns[1:-1]:
+        q1 = df[col].quantile(0.25)
+        q3 = df[col].quantile(0.75)
+        iqr = q3 - q1
+        lower_bound = q1 - (1.5 * iqr)
+        upper_bound = q3 + (1.5 * iqr)
+        df = df[(df[col] > lower_bound) & (df[col] < upper_bound)]
+    # # Assume last column is target variable
+    # target_column = df.columns[-1]
+    # # Remove outliers from target variable
+    # q1 = df[target_column].quantile(0.25)
+    # q3 = df[target_column].quantile(0.75)
+    # iqr = q3 - q1
+    # lower_bound = q1 - (1.5 * iqr)
+    # upper_bound = q3 + (1.5 * iqr)
+    # df = df[(df[target_column] > lower_bound) & (df[target_column] < upper_bound)]
     return df
 
 
