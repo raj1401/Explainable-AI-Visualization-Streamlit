@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from data_preprocessing import get_preprocessing_needs_table, plot_data
-from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features
+from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features, fix_class_imbalance
 
 from model_creation_and_training import create_and_search_tree_classifier, train_final_classifier
 from model_creation_and_training import create_and_search_tree_regressor, train_final_regressor
@@ -234,6 +234,10 @@ def normalize_data():
     sl.session_state.processed_df = scale_features(sl.session_state.processed_df)
 
 
+def handle_class_imbalance():
+    sl.session_state.processed_df = fix_class_imbalance(sl.session_state.processed_df)
+
+
 # def write_preprocessing_needs_table():
 #     sl.write("The following table shows the preprocessing needs of your data:")
 #     preprocessing_table = get_preprocessing_needs_table(sl.session_state.processed_df)
@@ -273,6 +277,19 @@ def write_preprocessing_needs_table():
     cols[4].write("Need for Scaling")
     cols[4].write(preprocessing_table.iloc[4,1])
     cols[4].button("Normalize Data", on_click=normalize_data)
+
+    second_row_cols = sl.columns(5)
+
+    second_row_cols[0].write("Data Type")
+    second_row_cols[0].write(preprocessing_table.iloc[5,1])
+    if preprocessing_table.iloc[5,1] == "Data suitable for Classification but needs to handle class imbalance":
+        # second_row_cols[0].button("Fix Imbalance", on_click=handle_class_imbalance)
+        second_row_cols[0].button("Fix Imbalance")
+    
+    second_row_cols[1].write("Periodicity in Data")
+    second_row_cols[1].write(f"Most common periodicity = {preprocessing_table.iloc[6,1]}")
+    periodicity = second_row_cols[1].selectbox("Select Periodicity", options=['D'])
+    second_row_cols[1].button("Make Data Periodic")
 
 
 def train_final_model():

@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.pipeline import Pipeline
 
 
 def detect_null_values(df: pd.DataFrame):
@@ -94,6 +97,39 @@ def detect_need_for_scaling(df: pd.DataFrame):
         return True
 
 
+def detect_data_type(df: pd.DataFrame):
+    target_column = df.columns[-1]
+
+    if df[target_column].nunique() > 10:
+        return "Data suitable for Regression"
+    else:
+        class_counts = df[target_column].value_counts()
+        imbalance_threshold = 0.05  # You can adjust this threshold based on your data
+        minority_class_count = class_counts.min()
+        majority_class_count = class_counts.max()
+        imbalance_ratio = minority_class_count / majority_class_count
+        if imbalance_ratio < imbalance_threshold:
+            return "Data suitable for Classification with insignificant class imbalance"
+        else:
+            return "Data suitable for Classification but needs to handle class imbalance"
+
+
+def detect_periodicity(df: pd.DataFrame):
+    try:
+        # Assume first column of dataframe has dates
+        date_column = df.columns[0]
+        # Calculate the frequency of the time series data
+        time_diffs = df[date_column].diff().dropna()
+        periodicity = time_diffs.mode()[0]
+        # time_diffs = time_diffs.dt.total_seconds()
+        # time_diffs = time_diffs[time_diffs > 0]
+        # time_diffs = time_diffs.value_counts()
+        # time_diffs = time_diffs[time_diffs > 1]
+        return periodicity
+    except Exception as e:
+        return e
+
+
 def get_preprocessing_needs_table(df):
     perc_null_values = round(detect_null_values(df), 2)
     inconsistency_types = detect_inconsistent_types(df)
@@ -102,10 +138,12 @@ def get_preprocessing_needs_table(df):
     perc_duplicates = round(detect_duplicates(df), 2)
     perc_outliers = round(detect_outliers(df), 2)
     needs_scaling = detect_need_for_scaling(df)
+    data_type = detect_data_type(df)
+    periodicity = detect_periodicity(df)
 
     table = pd.DataFrame({
-        'Type': ['Percentage of Null Values', 'Inconsistent Types', 'Percentage of Duplicates', 'Percentage of Outliers', 'Need for Scaling'],
-        'Value': [perc_null_values, inconsistency, perc_duplicates, perc_outliers, needs_scaling]
+        'Type': ['Percentage of Null Values', 'Inconsistent Types', 'Percentage of Duplicates', 'Percentage of Outliers', 'Need for Scaling', 'Data Type', 'Periodicity'],
+        'Value': [perc_null_values, inconsistency, perc_duplicates, perc_outliers, needs_scaling, data_type, periodicity]
     })
     
     return table
@@ -173,6 +211,39 @@ def scale_features(df: pd.DataFrame):
     df.iloc[:, 1:-1] = scaler.fit_transform(df.iloc[:, 1:-1])
     return df
 
+
+def fix_class_imbalance(df: pd.DataFrame):
+    # Assume last column is target variable
+    target_column = df.columns[-1]
+    # Handle class imbalance using SMOTE
+    over = SMOTE(sampling_strategy=0.1)
+    under = RandomUnderSampler(sampling_strategy=0.5)
+    steps = [('o', over), ('u', under)]
+    pipeline = Pipeline(steps=steps)
+
+    X = df.iloc[:, :-1]
+    y = df[target_column]
+    
+    X, y = pipeline.fit_resample(X, y)
+    df = pd.concat([X, y], axis=1)
+    return df
+
+
+def interpolate_data(df:pd.DataFrame, freq:str):
+    # Assuming first column of df has dates in MM/DD/YYYY
+    # and the last column has the target values.
+    dates_name = df.columns[0]
+    target_name = df.columns[-1]
+
+    df[dates_name] = pd.to_datetime(df[dates_name], dayfirst=False)
+    date_range = pd.date_range(start=df[dates_name].min(), end=df[dates_name].max(), freq=freq)
+    complete_df = pd.DataFrame({dates_name:date_range})
+
+    result_df = pd.merge(complete_df, df, on=dates_name, how='left')
+    final_df = result_df[[dates_name, target_name]].copy(deep=True)
+
+    final_df.interpolate(inplace=True)
+    return final_df
 
 #############################################################################
 
