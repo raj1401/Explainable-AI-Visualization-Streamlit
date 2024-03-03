@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from data_preprocessing import get_preprocessing_needs_table, plot_data
-from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features, fix_class_imbalance
+from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features, fix_class_imbalance, interpolate_data
 
 from model_creation_and_training import create_and_search_tree_classifier, train_final_classifier
 from model_creation_and_training import create_and_search_tree_regressor, train_final_regressor
@@ -238,6 +238,10 @@ def handle_class_imbalance():
     sl.session_state.processed_df = fix_class_imbalance(sl.session_state.processed_df)
 
 
+def make_data_periodic(periodicity):
+    sl.session_state.processed_df = interpolate_data(sl.session_state.processed_df, periodicity)
+
+
 # def write_preprocessing_needs_table():
 #     sl.write("The following table shows the preprocessing needs of your data:")
 #     preprocessing_table = get_preprocessing_needs_table(sl.session_state.processed_df)
@@ -287,9 +291,15 @@ def write_preprocessing_needs_table():
         second_row_cols[0].button("Fix Imbalance")
     
     second_row_cols[1].write("Periodicity in Data")
-    second_row_cols[1].write(f"Most common periodicity = {preprocessing_table.iloc[6,1]}")
-    periodicity = second_row_cols[1].selectbox("Select Periodicity", options=['D'])
-    second_row_cols[1].button("Make Data Periodic")
+    second_row_cols[1].write(preprocessing_table.iloc[6,1])
+    periodicity = second_row_cols[1].selectbox("Select Periodicity in Days", options=range(1,30))
+    second_row_cols[1].button("Make Data Periodic", on_click=make_data_periodic, args=(f"{periodicity}D",))
+
+    second_row_cols[2].write("One-Hot Encoding")
+
+    second_row_cols[3].write("Label Encoding")
+
+    second_row_cols[4].write("One More Function")
 
 
 def train_final_model():
@@ -698,20 +708,15 @@ with sl.container():
             sl.success("Features Submitted!")
         sl.subheader("Data Preprocessing")
         # _, preprocess_col, _ = sl.columns((1,4,1))
-        if sl.button("Check Preprocessing Needs", use_container_width=True):
+        # preprocess_button = sl.button("Check Preprocessing Needs", use_container_width=True)
+        if sl.session_state.processed_df is not None:
             _, plt_col, _ = sl.columns((1,4,1))
             plot_initial_data(plt_col)
             write_preprocessing_needs_table()
-            # sl.write("The following table shows the preprocessing needs of your data:")
-            # preprocessing_table = get_preprocessing_needs_table(sl.session_state.dataframe)
-            # sl.table(preprocessing_table)
-
-            # cols = sl.columns(5)
-            # cols[0].button("Remove Null Values")
-            # cols[1].button("Fix Inconsistent Types")
-            # cols[2].button("Remove Duplicates")
-            # cols[3].button("Remove Outliers")
-            # cols[4].button("Normalize Data")
+        # if sl.button("Check Preprocessing Needs", use_container_width=True):
+        #     _, plt_col, _ = sl.columns((1,4,1))
+        #     plot_initial_data(plt_col)
+        #     write_preprocessing_needs_table()
 
         # with preprocess_col:
         #     sl.button("Check Preprocessing Needs", use_container_width=True, on_click=write_preprocessing_needs_table)

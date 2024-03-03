@@ -120,12 +120,15 @@ def detect_periodicity(df: pd.DataFrame):
         date_column = df.columns[0]
         # Calculate the frequency of the time series data
         time_diffs = df[date_column].diff().dropna()
-        periodicity = time_diffs.mode()[0]
+        most_common_periodicity = time_diffs.mode()[0]
+        min_periodicity = time_diffs.min()
         # time_diffs = time_diffs.dt.total_seconds()
         # time_diffs = time_diffs[time_diffs > 0]
         # time_diffs = time_diffs.value_counts()
         # time_diffs = time_diffs[time_diffs > 1]
-        return periodicity
+        most_common_day_per = most_common_periodicity.days
+        min_day_per = min_periodicity.days
+        return f"Most common periodicity: {most_common_day_per} days, Minimum periodicity: {min_day_per} days"
     except Exception as e:
         return e
 
@@ -173,7 +176,12 @@ def fix_inconsistent_types(df: pd.DataFrame):
     df[target_column] = df[target_column].astype('float64')
 
     # Convert feature columns to float64 type
-    df[feature_columns] = df[feature_columns].astype('float64')
+    for feat_col in feature_columns:
+        try:
+            df[feat_col] = df[feat_col].astype('float64')
+        except:
+            continue
+    # df[feature_columns] = df[feature_columns].astype('float64')
 
     return df
 
@@ -233,14 +241,14 @@ def interpolate_data(df:pd.DataFrame, freq:str):
     # Assuming first column of df has dates in MM/DD/YYYY
     # and the last column has the target values.
     dates_name = df.columns[0]
-    target_name = df.columns[-1]
+    # target_name = df.columns[1:]
 
     df[dates_name] = pd.to_datetime(df[dates_name], dayfirst=False)
     date_range = pd.date_range(start=df[dates_name].min(), end=df[dates_name].max(), freq=freq)
     complete_df = pd.DataFrame({dates_name:date_range})
 
     result_df = pd.merge(complete_df, df, on=dates_name, how='left')
-    final_df = result_df[[dates_name, target_name]].copy(deep=True)
+    final_df = result_df.copy(deep=True)
 
     final_df.interpolate(inplace=True)
     return final_df
@@ -274,7 +282,11 @@ def plot_data(df: pd.DataFrame):
         # Plot each feature column against date column
         i, j = 0, 0
         for feature in feature_columns:
-            ax[i][j].plot(df[date_column], df[feature], label=feature)
+            try:
+                ax[i][j].plot(df[date_column], df[feature], label=feature)
+            except:
+                # Write as text
+                ax[i][j].text(0.5, 0.5, f"Cannot plot {feature}", horizontalalignment='center', verticalalignment='center', transform=ax[i][j].transAxes)
             ax[i][j].set_xlabel("Dates")
             ax[i][j].set_ylabel(feature)
             ax[i][j].set_xticks(xticks)
