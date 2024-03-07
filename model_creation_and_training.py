@@ -401,7 +401,7 @@ def train_final_SVM_classifier(df, **kwargs):
 
     pipeline = Pipeline([
     ('scaler', StandardScaler()),
-    ('svm_classifier', SVC(probability=True))
+    ('svm_classifier', SVC(probability=False))
     ])
 
     pipeline.set_params(**param_distributions)

@@ -5,6 +5,9 @@ import math
 from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
+import seaborn as sns
+from scipy import stats
 
 
 def detect_null_values(df: pd.DataFrame):
@@ -43,13 +46,16 @@ def detect_duplicates(df: pd.DataFrame):
 def detect_outliers(df: pd.DataFrame):
     num_outliers = 0
     for col in df.columns[1:-1]:
-        q1 = df[col].quantile(0.25)
-        q3 = df[col].quantile(0.75)
-        iqr = q3 - q1
-        lower_bound = q1 - (1.5 * iqr)
-        upper_bound = q3 + (1.5 * iqr)
-        outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)]
-        num_outliers += outliers.shape[0]
+        try:
+            q1 = df[col].quantile(0.25)
+            q3 = df[col].quantile(0.75)
+            iqr = q3 - q1
+            lower_bound = q1 - (1.5 * iqr)
+            upper_bound = q3 + (1.5 * iqr)
+            outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)]
+            num_outliers += outliers.shape[0]
+        except:
+            continue
     
     return (num_outliers / df.shape[0]) * 100
     # # Assume last column is target variable
@@ -84,9 +90,18 @@ def detect_need_for_scaling(df: pd.DataFrame):
     # similar_range = check_similarity(features_range.tolist(), range_threshold, std_threshold)
 
     # return (similar_min and similar_max and similar_range)
+    min_val, max_val = np.inf, -np.inf
+    for col in df.columns[1:-1]:
+        try:
+            min_val = min(min_val, df[col].min())
+            max_val = max(max_val, df[col].max())
+        except:
+            continue
 
-    features_min = df.iloc[:, 1:-1].min(axis=None)
-    features_max = df.iloc[:, 1:-1].max(axis=None)
+    # features_min = df.iloc[:, 1:-1].min(axis=None)
+    # features_max = df.iloc[:, 1:-1].max(axis=None)
+    features_min = min_val
+    features_max = max_val
     features_range = features_max - features_min
 
     range_threshold = 1
@@ -101,17 +116,17 @@ def detect_data_type(df: pd.DataFrame):
     target_column = df.columns[-1]
 
     if df[target_column].nunique() > 10:
-        return "Data suitable for Regression"
+        return "Data suitable for Regression", None
     else:
         class_counts = df[target_column].value_counts()
-        imbalance_threshold = 0.05  # You can adjust this threshold based on your data
+        imbalance_threshold = 0.5  # You can adjust this threshold based on your data
         minority_class_count = class_counts.min()
         majority_class_count = class_counts.max()
         imbalance_ratio = minority_class_count / majority_class_count
-        if imbalance_ratio < imbalance_threshold:
-            return "Data suitable for Classification with insignificant class imbalance"
+        if imbalance_ratio > imbalance_threshold:
+            return "Data suitable for Classification with insignificant class imbalance", class_counts
         else:
-            return "Data suitable for Classification but needs to handle class imbalance"
+            return "Data suitable for Classification but needs to handle class imbalance", class_counts
 
 
 def detect_periodicity(df: pd.DataFrame):
@@ -133,6 +148,20 @@ def detect_periodicity(df: pd.DataFrame):
         return e
 
 
+def detect_columns_for_encoding(df: pd.DataFrame):
+    # Assume first column of dataframe has dates
+    # Last column has target variable
+    # Rest of the columns are features
+    feature_columns = df.columns[1:-1]
+
+    # Check if any of the feature columns are of type object
+    columns_for_encoding = []
+    for col in feature_columns:
+        if df[col].dtype == 'object' or df[col].dtype == 'str':
+            columns_for_encoding.append(col)
+    return columns_for_encoding
+
+
 def get_preprocessing_needs_table(df):
     perc_null_values = round(detect_null_values(df), 2)
     inconsistency_types = detect_inconsistent_types(df)
@@ -143,10 +172,11 @@ def get_preprocessing_needs_table(df):
     needs_scaling = detect_need_for_scaling(df)
     data_type = detect_data_type(df)
     periodicity = detect_periodicity(df)
+    columns_for_encoding = detect_columns_for_encoding(df)
 
     table = pd.DataFrame({
-        'Type': ['Percentage of Null Values', 'Inconsistent Types', 'Percentage of Duplicates', 'Percentage of Outliers', 'Need for Scaling', 'Data Type', 'Periodicity'],
-        'Value': [perc_null_values, inconsistency, perc_duplicates, perc_outliers, needs_scaling, data_type, periodicity]
+        'Type': ['Percentage of Null Values', 'Inconsistent Types', 'Percentage of Duplicates', 'Percentage of Outliers', 'Need for Scaling', 'Data Type', 'Periodicity', 'Columns for Encoding'],
+        'Value': [perc_null_values, inconsistency, perc_duplicates, perc_outliers, needs_scaling, data_type, periodicity, columns_for_encoding]
     })
     
     return table
@@ -221,20 +251,33 @@ def scale_features(df: pd.DataFrame):
 
 
 def fix_class_imbalance(df: pd.DataFrame):
+    date_column = df.columns[0]
     # Assume last column is target variable
     target_column = df.columns[-1]
     # Handle class imbalance using SMOTE
-    over = SMOTE(sampling_strategy=0.1)
-    under = RandomUnderSampler(sampling_strategy=0.5)
-    steps = [('o', over), ('u', under)]
-    pipeline = Pipeline(steps=steps)
+    # over = SMOTE(sampling_strategy=0.1)
+    # under = RandomUnderSampler(random_state=42)
+    # steps = [('o', over), ('u', under)]
+    # steps = [('u', under)]
+    # pipeline = Pipeline(steps=steps)
 
     X = df.iloc[:, :-1]
     y = df[target_column]
     
-    X, y = pipeline.fit_resample(X, y)
-    df = pd.concat([X, y], axis=1)
-    return df
+    # X_und, y_und = under.fit_resample(X, y)
+    # new_df = pd.concat([X_und, y_und], axis=1)
+
+    # get value counts of target variable
+    class_counts = df[target_column].value_counts()
+    minority_class = class_counts.idxmin()
+    minority_class_count = class_counts.min()
+
+    resampled_dfs = []
+    for class_val in class_counts.index:
+        resampled_dfs.append(df[df[target_column] == class_val].sample(minority_class_count, replace=False, random_state=42))
+    new_df = pd.concat(resampled_dfs).sort_values(by=date_column)
+        
+    return new_df
 
 
 def interpolate_data(df:pd.DataFrame, freq:str):
@@ -252,6 +295,57 @@ def interpolate_data(df:pd.DataFrame, freq:str):
 
     final_df.interpolate(inplace=True)
     return final_df
+
+
+def boxcox_transform(df: pd.DataFrame):
+    # Assume first column of dataframe has dates
+    # Last column has target variable
+    # Rest of the columns are features
+    feature_columns = df.columns[1:-1]
+    feat_lmda = {}
+    for col in feature_columns:
+        df[col].replace(0, 0.001, inplace=True)
+        df[col].replace(0., 0.001, inplace=True)   
+        try:
+            df[col], lmbda = stats.boxcox(df[col])
+            feat_lmda[col] = lmbda
+        except:
+            feat_lmda[col] = None
+    return df, feat_lmda
+
+
+def encode_categorical_features(df: pd.DataFrame, cols: list, type: str):
+    if type == 'one_hot':
+        encoder_dict = {}        
+        for col in cols:
+            encoder = OneHotEncoder()
+            enc_vals = encoder.fit_transform(df[col].values.reshape(-1, 1)).toarray()
+            encoder_dict[col] = encoder
+            vals = []
+            for i in range(df.shape[0]):
+                vals.append(enc_vals[i])
+            df[col] = vals
+        return df, encoder_dict
+    elif type == 'label':
+        for col in cols:
+            df[col] = df[col].astype('category').cat.codes
+        return df
+
+
+def get_correlation_matrix(df: pd.DataFrame, method: str = 'pearson'):
+    # Assume first column of dataframe has dates
+    # Last column has target variable
+    # Rest of the columns are features
+    feature_columns = df.columns[1:-1]
+    try:
+        corr_matrix = df[feature_columns].corr(method=method)
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='coolwarm', square=True, linewidths=.5, cbar_kws={"shrink": .5}, ax=ax)
+        ax.set_title('Correlation Matrix Heatmap')
+        return fig, None
+    except Exception as e:
+        return None, e
+
 
 #############################################################################
 

@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from data_preprocessing import get_preprocessing_needs_table, plot_data
-from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features, fix_class_imbalance, interpolate_data
+from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features, fix_class_imbalance, interpolate_data, boxcox_transform, encode_categorical_features, get_correlation_matrix
 
 from model_creation_and_training import create_and_search_tree_classifier, train_final_classifier
 from model_creation_and_training import create_and_search_tree_regressor, train_final_regressor
@@ -93,6 +93,10 @@ if 'TEST_FRACTION' not in sl.session_state:
 
 if 'LSTM_Model' not in sl.session_state:
     sl.session_state.LSTM_Model = None
+
+
+if 'box_cox_dict' not in sl.session_state:
+    sl.session_state.box_cox_dict = None
 
 
 # ---- HELPER FUNCTIONS ---- #
@@ -242,6 +246,25 @@ def make_data_periodic(periodicity):
     sl.session_state.processed_df = interpolate_data(sl.session_state.processed_df, periodicity)
 
 
+# def one_hot_encode_data(cols_for_one_hot):
+#     sl.session_state.processed_df, sl.session_state.one_hot_enc_dict = encode_categorical_features(sl.session_state.processed_df, cols_for_one_hot, type="one_hot")
+
+
+def use_boxcox_transform():
+    sl.session_state.processed_df, sl.session_state.box_cox_dict = boxcox_transform(sl.session_state.processed_df)
+
+
+def label_encode_data(cols_for_label):
+    sl.session_state.processed_df = encode_categorical_features(sl.session_state.processed_df, cols_for_label, type="label")
+
+
+def plot_correlation_matrix(col, corr_method):
+    fig, err_msg = get_correlation_matrix(sl.session_state.processed_df, corr_method)
+    if fig is None:
+        col.write(err_msg)
+    else:
+        col.write(fig)
+
 # def write_preprocessing_needs_table():
 #     sl.write("The following table shows the preprocessing needs of your data:")
 #     preprocessing_table = get_preprocessing_needs_table(sl.session_state.processed_df)
@@ -282,24 +305,45 @@ def write_preprocessing_needs_table():
     cols[4].write(preprocessing_table.iloc[4,1])
     cols[4].button("Normalize Data", on_click=normalize_data)
 
+    sl.write("---")
+
     second_row_cols = sl.columns(5)
 
     second_row_cols[0].write("Data Type")
-    second_row_cols[0].write(preprocessing_table.iloc[5,1])
-    if preprocessing_table.iloc[5,1] == "Data suitable for Classification but needs to handle class imbalance":
-        # second_row_cols[0].button("Fix Imbalance", on_click=handle_class_imbalance)
-        second_row_cols[0].button("Fix Imbalance")
+    second_row_cols[0].write(preprocessing_table.iloc[5,1][0])
+    if preprocessing_table.iloc[5,1][0] == "Data suitable for Classification with insignificant class imbalance":
+        second_row_cols[0].table(preprocessing_table.iloc[5,1][1])
+    elif preprocessing_table.iloc[5,1][0] == "Data suitable for Classification but needs to handle class imbalance":
+        # second_row_cols[0].button("Fix Imbalance", on_click=handle_class_imbalance)        
+        second_row_cols[0].table(preprocessing_table.iloc[5,1][1])
+        second_row_cols[0].button("Fix Imbalance", on_click=handle_class_imbalance)
     
     second_row_cols[1].write("Periodicity in Data")
     second_row_cols[1].write(preprocessing_table.iloc[6,1])
     periodicity = second_row_cols[1].selectbox("Select Periodicity in Days", options=range(1,30))
     second_row_cols[1].button("Make Data Periodic", on_click=make_data_periodic, args=(f"{periodicity}D",))
 
-    second_row_cols[2].write("One-Hot Encoding")
+    # second_row_cols[2].write("One-Hot Encoding")
+    # cols_that_need_encoding = preprocessing_table.iloc[7,1]
+    # cols_for_one_hot = second_row_cols[2].multiselect("Select Columns for One-Hot Encoding", options=cols_that_need_encoding)
+    # if len(cols_for_one_hot) > 0:
+    #     second_row_cols[2].button("One-Hot Encode", on_click=one_hot_encode_data, args=(cols_for_one_hot,))
+
+    second_row_cols[2].write("Box-Cox Transform")
+    second_row_cols[2].button("Use Box-Cox Transform", on_click=use_boxcox_transform)
 
     second_row_cols[3].write("Label Encoding")
+    cols_that_need_label_encoding = preprocessing_table.iloc[7,1]
+    cols_for_label = second_row_cols[3].multiselect("Select Columns for Label Encoding", options=cols_that_need_label_encoding)
+    if len(cols_for_label) > 0:
+        second_row_cols[3].button("Label Encode", on_click=label_encode_data, args=(cols_for_label,))
 
-    second_row_cols[4].write("One More Function")
+    second_row_cols[4].write("Correlation Analysis")
+    corr_method = second_row_cols[4].selectbox("Select Correlation Method", options=["pearson", "kendall", "spearman"])
+    second_row_cols[4].button("Plot Correlation Matrix", on_click=plot_correlation_matrix, args=(second_row_cols[4], corr_method))
+
+    processed_csv = sl.session_state.processed_df.to_csv(index=False).encode('utf-8')
+    sl.download_button(label="Download Processed Dataset", data=processed_csv, file_name="processed_dataset.csv", mime='text/csv', use_container_width=True)
 
 
 def train_final_model():
@@ -507,7 +551,7 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
     elif model_type == "SVM Classifier":
         back_dist = shap.utils.sample(X_train, int(0.05*len(X_train.iloc[:,0])))
         # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
-        explainer = shap.KernelExplainer(model.named_steps['svm_classifier'].predict_proba, back_dist)
+        explainer = shap.KernelExplainer(model.named_steps['svm_classifier'].predict, back_dist)
         shap_values = explainer.shap_values(X_test)
         base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
         shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
