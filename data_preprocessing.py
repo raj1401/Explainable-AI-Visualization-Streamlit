@@ -174,6 +174,15 @@ def get_preprocessing_needs_table(df):
     periodicity = detect_periodicity(df)
     columns_for_encoding = detect_columns_for_encoding(df)
 
+    null_contribution = (100 - perc_null_values) / 100
+    inconsistency_contribution = (3 - sum(inconsistency_types)) / 3
+    duplicates_contribution = (100 - perc_duplicates) / 100
+    outliers_contribution = (100 - perc_outliers) / 100
+    scaling_contribution = 0 if needs_scaling else 1
+    data_type_contribution = 0 if data_type[0] == "Data suitable for Classification but needs to handle class imbalance" else 1
+
+    progress = (null_contribution + inconsistency_contribution + duplicates_contribution + outliers_contribution + scaling_contribution + data_type_contribution) / 6
+
     table = pd.DataFrame({
         'Type': ['Percentage of Null Values', 'Inconsistent Types', 'Percentage of Duplicates', 'Percentage of Outliers', 'Need for Scaling', 'Data Type', 'Periodicity', 'Columns for Encoding'],
         'Value': [perc_null_values, inconsistency, perc_duplicates, perc_outliers, needs_scaling, data_type, periodicity, columns_for_encoding]
