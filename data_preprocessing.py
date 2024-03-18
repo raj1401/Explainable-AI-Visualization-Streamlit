@@ -188,7 +188,7 @@ def get_preprocessing_needs_table(df):
         'Value': [perc_null_values, inconsistency, perc_duplicates, perc_outliers, needs_scaling, data_type, periodicity, columns_for_encoding]
     })
     
-    return table
+    return table, progress
 
 
 #############################################################################

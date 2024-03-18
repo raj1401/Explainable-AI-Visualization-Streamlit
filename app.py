@@ -94,6 +94,8 @@ if 'TEST_FRACTION' not in sl.session_state:
 if 'LSTM_Model' not in sl.session_state:
     sl.session_state.LSTM_Model = None
 
+# if 'LSTM_plot_col' not in sl.session_state:
+#     sl.session_state.LSTM_plot_col = None
 
 if 'box_cox_dict' not in sl.session_state:
     sl.session_state.box_cox_dict = None
@@ -281,8 +283,10 @@ def plot_correlation_matrix(col, corr_method):
 
 
 def write_preprocessing_needs_table():
+    preprocessing_table, progress = get_preprocessing_needs_table(sl.session_state.processed_df)
+    sl.progress(progress, text="Data Quality for ML Training")
+    sl.write(f"Quality Score = {round(progress*100, 2)}%")
     sl.write("The following table shows the preprocessing needs of your data:")
-    preprocessing_table = get_preprocessing_needs_table(sl.session_state.processed_df)
     cols = sl.columns(5)
 
     cols[0].write("Percentage of Null Values")
@@ -960,6 +964,8 @@ with sl.container():
                 single_df_data = sl.file_uploader("Single DataFrame", type="csv")
                 if single_df_data is not None:
                     _, plot_col, _ = sl.columns((1,4,1))
+                    # sl.session_state.LSTM_plot_col = plot_col
+                    # plot_col.button("Train LSTM Model", use_container_width=True, on_click=plot_lstm_forecasts_single, args=(single_df_data, future_steps, plot_col, batch_size, lookback, hidden_size, num_layers))
                     plot_lstm_forecasts_single(input_data_file=single_df_data, future_steps=future_steps, plot_col=plot_col,
                                                batch_size=batch_size, lookback=lookback, hidden_size=hidden_size, num_layers=num_layers)
             
@@ -967,6 +973,8 @@ with sl.container():
                 multi_df_data = sl.file_uploader("Multiple Data Series", type="csv")
                 if multi_df_data is not None:
                     _, plot_col, _ = sl.columns((1,4,1))
+                    # sl.session_state.LSTM_plot_col = plot_col
+                    # plot_col.button("Train LSTM Model", use_container_width=True, on_click=plot_lstm_forecasts_multiple, args=(multi_df_data, future_steps, plot_col, batch_size, hidden_size, num_layers))
                     plot_lstm_forecasts_multiple(input_data_file=multi_df_data, future_steps=future_steps, plot_col=plot_col,
                                                  batch_size=batch_size, hidden_size=hidden_size, num_layers=num_layers)
 
