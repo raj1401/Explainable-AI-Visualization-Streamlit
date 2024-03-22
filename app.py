@@ -284,8 +284,8 @@ def plot_correlation_matrix(col, corr_method):
 
 def write_preprocessing_needs_table():
     preprocessing_table, progress = get_preprocessing_needs_table(sl.session_state.processed_df)
-    sl.progress(progress, text="Data Quality for ML Training")
-    sl.write(f"Quality Score = {round(progress*100, 2)}%")
+    sl.progress(progress, text="Data Readiness for ML Training")
+    sl.write(f"Readiness Score = {round(progress*100, 2)}%")
     sl.write("The following table shows the preprocessing needs of your data:")
     cols = sl.columns(5)
 
