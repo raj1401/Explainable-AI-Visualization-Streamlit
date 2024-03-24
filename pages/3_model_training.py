@@ -28,7 +28,7 @@ def reset_params():
 
 
 def on_click_search_params():
-    if model_type == "Random Forest Classifier":
+    if st.session_state.model_type == "Random Forest Classifier":
         # Change this later
         param_distributions = {
         'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -42,7 +42,7 @@ def on_click_search_params():
         st.session_state.search_results["params"] = params_
         st.session_state.search_results["model"] = model_
     
-    elif model_type == "Random Forest Regressor":
+    elif st.session_state.model_type == "Random Forest Regressor":
         # Change this later
         param_distributions = {
         'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -56,7 +56,7 @@ def on_click_search_params():
         st.session_state.search_results["params"] = params_
         st.session_state.search_results["model"] = model_
     
-    elif model_type == "Logistic Regression":
+    elif st.session_state.model_type == "Logistic Regression":
         param_distributions = {
             'logistic_regression__C': np.arange(0, 10, 0.2),
             'logistic_regression__l1_ratio': np.arange(0, 1, 0.1)
@@ -67,7 +67,7 @@ def on_click_search_params():
         st.session_state.search_results["params"] = params_
         st.session_state.search_results["model"] = model_
     
-    elif model_type == "Linear Regression":
+    elif st.session_state.model_type == "Linear Regression":
         param_distributions = {
             'linear_regression__alpha': np.arange(0, 10, 0.2),
             'linear_regression__l1_ratio': np.arange(0, 1, 0.1)
@@ -78,7 +78,7 @@ def on_click_search_params():
         st.session_state.search_results["params"] = params_
         st.session_state.search_results["model"] = model_
 
-    elif model_type == "KNN Classifier":
+    elif st.session_state.model_type == "KNN Classifier":
         param_distributions = {
             'knn_classifier__n_neighbors': np.arange(start=2, stop=16, step=2),
             'knn_classifier__leaf_size': np.arange(start=15, stop=60, step=15),
@@ -90,7 +90,7 @@ def on_click_search_params():
         st.session_state.search_results["params"] = params_
         st.session_state.search_results["model"] = model_
     
-    elif model_type == "KNN Regressor":
+    elif st.session_state.model_type == "KNN Regressor":
         param_distributions = {
             'knn_regressor__n_neighbors': np.arange(start=2, stop=16, step=2),
             'knn_regressor__leaf_size': np.arange(start=15, stop=60, step=15),
@@ -102,7 +102,7 @@ def on_click_search_params():
         st.session_state.search_results["params"] = params_
         st.session_state.search_results["model"] = model_
     
-    elif model_type == "SVM Classifier":
+    elif st.session_state.model_type == "SVM Classifier":
         param_distributions = {
             'svm_classifier__C': np.arange(start=0, stop=10, step=0.2)
         }
@@ -112,7 +112,7 @@ def on_click_search_params():
         st.session_state.search_results["params"] = params_
         st.session_state.search_results["model"] = model_
     
-    elif model_type == "SVM Regressor":
+    elif st.session_state.model_type == "SVM Regressor":
         param_distributions = {
             'svm_regressor__C': np.arange(start=0, stop=10, step=0.2)
         }
@@ -124,49 +124,49 @@ def on_click_search_params():
 
 
 def train_final_model():
-    if model_type == "Random Forest Classifier":
+    if st.session_state.model_type == "Random Forest Classifier":
         final_model, rand_state, test_fraction = train_final_classifier(df=st.session_state.processed_df, param_distributions=st.session_state.final_params)
         st.session_state.final_model = final_model
         st.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         st.session_state.TEST_FRACTION = test_fraction
     
-    elif model_type == "Random Forest Regressor":
+    elif st.session_state.model_type == "Random Forest Regressor":
         final_model, rand_state, test_fraction = train_final_regressor(df=st.session_state.processed_df, param_distributions=st.session_state.final_params)
         st.session_state.final_model = final_model
         st.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         st.session_state.TEST_FRACTION = test_fraction
     
-    elif model_type == "Logistic Regression":
+    elif st.session_state.model_type == "Logistic Regression":
         final_model, rand_state, test_fraction = train_final_logistic_regression(df=st.session_state.processed_df, param_distributions=st.session_state.final_params)
         st.session_state.final_model = final_model
         st.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         st.session_state.TEST_FRACTION = test_fraction
     
-    elif model_type == "Linear Regression":
+    elif st.session_state.model_type == "Linear Regression":
         final_model, rand_state, test_fraction = train_final_linear_regression(df=st.session_state.processed_df, param_distributions=st.session_state.final_params)
         st.session_state.final_model = final_model
         st.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         st.session_state.TEST_FRACTION = test_fraction
     
-    elif model_type == "KNN Classifier":
+    elif st.session_state.model_type == "KNN Classifier":
         final_model, rand_state, test_fraction = train_final_KNN_classifier(df=st.session_state.processed_df, param_distributions=st.session_state.final_params)
         st.session_state.final_model = final_model
         st.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         st.session_state.TEST_FRACTION = test_fraction
     
-    elif model_type == "KNN Regressor":
+    elif st.session_state.model_type == "KNN Regressor":
         final_model, rand_state, test_fraction = train_final_KNN_regressor(df=st.session_state.processed_df, param_distributions=st.session_state.final_params)
         st.session_state.final_model = final_model
         st.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         st.session_state.TEST_FRACTION = test_fraction
     
-    elif model_type == "SVM Classifier":
+    elif st.session_state.model_type == "SVM Classifier":
         final_model, rand_state, test_fraction = train_final_SVM_classifier(df=st.session_state.processed_df, param_distributions=st.session_state.final_params)
         st.session_state.final_model = final_model
         st.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         st.session_state.TEST_FRACTION = test_fraction
     
-    elif model_type == "SVM Regressor":
+    elif st.session_state.model_type == "SVM Regressor":
         final_model, rand_state, test_fraction = train_final_SVM_regressor(df=st.session_state.processed_df, param_distributions=st.session_state.final_params)
         st.session_state.final_model = final_model
         st.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
@@ -188,7 +188,7 @@ if st.session_state.processed_df is not None:
     st.write("Models Available:")
     model_table = {"Classification Models":st.session_state.classification_models, "Regression Models":st.session_state.regression_models}
     st.table(model_table)
-    model_type = st.selectbox(label="Model Type", options=st.session_state.all_models, on_change=reset_params)
+    st.session_state.model_type = st.selectbox(label="Model Type", options=st.session_state.all_models, on_change=reset_params)
     model_submit_button = st.button("Submit Model Type", use_container_width=True, on_click=on_click_search_params)
 
 # ---- FINAL MODEL TRAINING PARAMETERS ---- #

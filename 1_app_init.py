@@ -1,5 +1,5 @@
 import streamlit as st
-from helper_functions import data_file_loader, create_ordered_dataframe
+from helper_functions import data_file_loader, create_ordered_dataframe, delete_folder_contents
 
 
 # ---- GLOBAL VARIABLES ---- #
@@ -48,8 +48,14 @@ if 'processed_df' not in st.session_state:
 if 'feats_selected_df' not in st.session_state:
     st.session_state.feats_selected_df = None
 
+if 'model_type' not in st.session_state:
+    st.session_state.model_type = None
+
 if 'final_model' not in st.session_state:
     st.session_state.final_model = None
+
+if 'perform_feature_selection' not in st.session_state:
+    st.session_state.perform_feature_selection = None
 
 if 'model_on_selected_feats' not in st.session_state:
     st.session_state.model_on_selected_feats = None
@@ -114,3 +120,5 @@ with st.container():
         if st.button("Submit Features"):
             st.session_state.processed_df = st.session_state.dataframe.copy(deep=True)
             st.success("Features Submitted!")
+
+delete_folder_contents(TEMP_DIR)
