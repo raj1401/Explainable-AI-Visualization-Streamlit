@@ -173,50 +173,51 @@ def train_final_model():
         st.session_state.TEST_FRACTION = test_fraction
 
 
-# ---- PAGE CONFIG ---- #
-st.set_page_config(page_title="Explainable AI", layout='wide')
+def show_model_training_page():
+    # # ---- PAGE CONFIG ---- #
+    # st.set_page_config(page_title="Explainable AI", layout='wide')
 
-# ---- TITLE ---- #
-st.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
-st.write('---')
+    # # ---- TITLE ---- #
+    # st.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
+    # st.write('---')
 
 
-# ---- MODEL SELECTION AND TRAINING ---- #
-st.subheader("Model Selection")
-if st.session_state.processed_df is not None:
-    st.write("Now you must select the model you want to use for training, based on the task at hand.")
-    st.write("Models Available:")
-    model_table = {"Classification Models":st.session_state.classification_models, "Regression Models":st.session_state.regression_models}
-    st.table(model_table)
-    st.session_state.model_type = st.selectbox(label="Model Type", options=st.session_state.all_models, on_change=reset_params)
-    model_submit_button = st.button("Submit Model Type", use_container_width=True, on_click=on_click_search_params)
+    # ---- MODEL SELECTION AND TRAINING ---- #
+    st.subheader("Model Selection")
+    if st.session_state.processed_df is not None:
+        st.write("Now you must select the model you want to use for training, based on the task at hand.")
+        st.write("Models Available:")
+        model_table = {"Classification Models":st.session_state.classification_models, "Regression Models":st.session_state.regression_models}
+        st.table(model_table)
+        st.session_state.model_type = st.selectbox(label="Model Type", options=st.session_state.all_models, on_change=reset_params)
+        model_submit_button = st.button("Submit Model Type", use_container_width=True, on_click=on_click_search_params)
 
-# ---- FINAL MODEL TRAINING PARAMETERS ---- #
-with st.container():
-    if "params" in st.session_state.search_results:
-        st.markdown("<h3 style='text-align: center;'> Hyperparmeter Tuning </h3>", unsafe_allow_html=True)
-        st.write("""
-                The following parameters were found optimum using Random Search
-                using five-fold cross validation. You can keep these parameters 
-                or set them yourself. 
-        """)
-        left_param_col, right_param_col = st.columns((1,1))
-        param_dict = st.session_state.search_results["params"]
-        num_params = len(param_dict)
-        param_keys = list(param_dict.keys())
+    # ---- FINAL MODEL TRAINING PARAMETERS ---- #
+    with st.container():
+        if "params" in st.session_state.search_results:
+            st.markdown("<h3 style='text-align: center;'> Hyperparmeter Tuning </h3>", unsafe_allow_html=True)
+            st.write("""
+                    The following parameters were found optimum using Random Search
+                    using five-fold cross validation. You can keep these parameters 
+                    or set them yourself. 
+            """)
+            left_param_col, right_param_col = st.columns((1,1))
+            param_dict = st.session_state.search_results["params"]
+            num_params = len(param_dict)
+            param_keys = list(param_dict.keys())
 
-        for i in range(num_params//2+1):
-            with left_param_col:
-                st.session_state.final_params[param_keys[i]] = st.number_input(param_keys[i], value=param_dict[param_keys[i]])
-        for i in range(num_params//2+1,num_params):
-            with right_param_col:
-                st.session_state.final_params[param_keys[i]] = st.number_input(param_keys[i], value=param_dict[param_keys[i]])
+            for i in range(num_params//2+1):
+                with left_param_col:
+                    st.session_state.final_params[param_keys[i]] = st.number_input(param_keys[i], value=param_dict[param_keys[i]])
+            for i in range(num_params//2+1,num_params):
+                with right_param_col:
+                    st.session_state.final_params[param_keys[i]] = st.number_input(param_keys[i], value=param_dict[param_keys[i]])
 
-with st.container():
-    if len(st.session_state.final_params) != 0:
-        st.write(""" Click on the button below to train the model on these hyperparameters. You will then be able to
-                 proceed with feature selection or skip directly to visualization of model performance and prediction.
-        """)
-        final_model_train_button = st.button("Train Final Model", use_container_width=True, on_click=train_final_model)
-    if st.session_state.final_model is not None:
-        st.success("Final Model Trained!")
+    with st.container():
+        if len(st.session_state.final_params) != 0:
+            st.write(""" Click on the button below to train the model on these hyperparameters. You will then be able to
+                    proceed with feature selection or skip directly to visualization of model performance and prediction.
+            """)
+            final_model_train_button = st.button("Train Final Model", use_container_width=True, on_click=train_final_model)
+        if st.session_state.final_model is not None:
+            st.success("Final Model Trained!")

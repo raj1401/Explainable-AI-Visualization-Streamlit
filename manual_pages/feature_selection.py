@@ -152,59 +152,60 @@ def train_model_on_selected_feats():
         model, _, _ = train_final_SVM_regressor(df=st.session_state.feats_selected_df, param_distributions=st.session_state.final_params)
 
 
-# ---- PAGE CONFIG ---- #
-st.set_page_config(page_title="Explainable AI", layout='wide')
+def show_feature_selection_page():
+    # # ---- PAGE CONFIG ---- #
+    # st.set_page_config(page_title="Explainable AI", layout='wide')
 
-# ---- TITLE ---- #
-st.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
-st.write('---')
+    # # ---- TITLE ---- #
+    # st.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
+    # st.write('---')
 
-# ---- FEATURE SELECTION ---- #
-st.subheader("Feature Selection")
-with st.container():
-    if st.session_state.final_model is not None:
-        st.markdown("<h4> Do you want to perform feature selection? </h4>", unsafe_allow_html=True)
-        st.session_state.perform_feature_selection = st.selectbox("Perform Feature Selection", options=["Yes", "No"], on_change=reset_on_change_feat_select)
+    # ---- FEATURE SELECTION ---- #
+    st.subheader("Feature Selection")
+    with st.container():
+        if st.session_state.final_model is not None:
+            st.markdown("<h4> Do you want to perform feature selection? </h4>", unsafe_allow_html=True)
+            st.session_state.perform_feature_selection = st.selectbox("Perform Feature Selection", options=["Yes", "No"], on_change=reset_on_change_feat_select)
 
-        if st.session_state.perform_feature_selection == "Yes":
-            st.write("Select the feature selection algorithms whose results you want to see:")
-            feature_selection_algorithms = st.multiselect("Feature Selection Algorithms", options=st.session_state.available_feat_select_algos, on_change=reset_on_change_feat_select)
+            if st.session_state.perform_feature_selection == "Yes":
+                st.write("Select the feature selection algorithms whose results you want to see:")
+                feature_selection_algorithms = st.multiselect("Feature Selection Algorithms", options=st.session_state.available_feat_select_algos, on_change=reset_on_change_feat_select)
 
-            if "SHAP" in feature_selection_algorithms:
-                # SHAP Values
-                st.markdown("<h3 style='text-align: center;'> SHAP Values </h3>", unsafe_allow_html=True)
-                left_shap_col, middle_shap_col, right_shap_col = st.columns(3)
-                plot_shap_graphs(left_shap_col, middle_shap_col, right_shap_col, st.session_state.processed_df, st.session_state.final_model)
+                if "SHAP" in feature_selection_algorithms:
+                    # SHAP Values
+                    st.markdown("<h3 style='text-align: center;'> SHAP Values </h3>", unsafe_allow_html=True)
+                    left_shap_col, middle_shap_col, right_shap_col = st.columns(3)
+                    plot_shap_graphs(left_shap_col, middle_shap_col, right_shap_col, st.session_state.processed_df, st.session_state.final_model)
 
-            if "Recursive Feature Elimination" in feature_selection_algorithms:
-                # RFE Values
-                st.markdown("<h3 style='text-align: center;'> Recursive Feature Elimination </h3>", unsafe_allow_html=True)
-                _, middle_rfe_col, _ = st.columns(3)
-                plot_rfe_features(middle_rfe_col, st.session_state.processed_df, st.session_state.final_model)
-            
-            if "Boruta" in feature_selection_algorithms:
-                # Boruta Values
-                st.markdown("<h3 style='text-align: center;'> Boruta Algorithm </h3>", unsafe_allow_html=True)
-                _, middle_rfe_col, _ = st.columns(3)                
-                plot_boruta_features(middle_rfe_col, st.session_state.processed_df)
-
-
-            if len(feature_selection_algorithms) != 0:
-                st.markdown("""<h4 style='text-align: center;'> Select the most important features that
-                    you want to retain in the data based on the above Graphs </h4>""", unsafe_allow_html=True)
-                new_features = st.multiselect("Features", options=st.session_state.independent_feats, on_change=trigger_training_on_selected_features)
+                if "Recursive Feature Elimination" in feature_selection_algorithms:
+                    # RFE Values
+                    st.markdown("<h3 style='text-align: center;'> Recursive Feature Elimination </h3>", unsafe_allow_html=True)
+                    _, middle_rfe_col, _ = st.columns(3)
+                    plot_rfe_features(middle_rfe_col, st.session_state.processed_df, st.session_state.final_model)
                 
-                if len(new_features) != 0:
-                    st.session_state.feats_selected_df = create_ordered_dataframe(st.session_state.processed_df, st.session_state.time_col, 
-                                                                                  new_features, st.session_state.target_var)
-                    # sl.session_state.feats_selected_df = sl.session_state.dataframe.loc[:,new_features].copy(deep=True)
-                    # sl.session_state.feats_selected_df[list(sl.session_state.dataframe.columns)[-1]] = sl.session_state.dataframe.iloc[:,-1].copy(deep=True)
-                else:
-                    st.session_state.feats_selected_df = None
+                if "Boruta" in feature_selection_algorithms:
+                    # Boruta Values
+                    st.markdown("<h3 style='text-align: center;'> Boruta Algorithm </h3>", unsafe_allow_html=True)
+                    _, middle_rfe_col, _ = st.columns(3)                
+                    plot_boruta_features(middle_rfe_col, st.session_state.processed_df)
 
-                if st.session_state.trigger_training_on_new_feats and len(new_features) != 0:
-                    train_model_on_selected_feats()
-                    st.session_state.trigger_training_on_new_feats = False
-        else:
-            st.session_state.feats_selected_df = st.session_state.dataframe
-            st.session_state.model_on_selected_feats = st.session_state.final_model
+
+                if len(feature_selection_algorithms) != 0:
+                    st.markdown("""<h4 style='text-align: center;'> Select the most important features that
+                        you want to retain in the data based on the above Graphs </h4>""", unsafe_allow_html=True)
+                    new_features = st.multiselect("Features", options=st.session_state.independent_feats, on_change=trigger_training_on_selected_features)
+                    
+                    if len(new_features) != 0:
+                        st.session_state.feats_selected_df = create_ordered_dataframe(st.session_state.processed_df, st.session_state.time_col, 
+                                                                                    new_features, st.session_state.target_var)
+                        # sl.session_state.feats_selected_df = sl.session_state.dataframe.loc[:,new_features].copy(deep=True)
+                        # sl.session_state.feats_selected_df[list(sl.session_state.dataframe.columns)[-1]] = sl.session_state.dataframe.iloc[:,-1].copy(deep=True)
+                    else:
+                        st.session_state.feats_selected_df = None
+
+                    if st.session_state.trigger_training_on_new_feats and len(new_features) != 0:
+                        train_model_on_selected_feats()
+                        st.session_state.trigger_training_on_new_feats = False
+            else:
+                st.session_state.feats_selected_df = st.session_state.dataframe
+                st.session_state.model_on_selected_feats = st.session_state.final_model

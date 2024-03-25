@@ -93,33 +93,34 @@ def plot_regression_time_series_predictions(df, model, col):
         col.write(fig)
 
 
-# ---- PAGE CONFIG ---- #
-st.set_page_config(page_title="Explainable AI", layout='wide')
+def show_model_performance_page():
+    # # ---- PAGE CONFIG ---- #
+    # st.set_page_config(page_title="Explainable AI", layout='wide')
 
-# ---- TITLE ---- #
-st.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
-st.write('---')
+    # # ---- TITLE ---- #
+    # st.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
+    # st.write('---')
 
-# ---- MODEL PERFORMANCE ---- #
-st.subheader("Model Performance")
-with st.container():
-    if st.session_state.model_on_selected_feats is not None:
-        # Model Performance
-        if st.session_state.perform_feature_selection == "Yes":
-            st.markdown("<h2 style='text-align: center;'> Model Performance on Selected Features </h2>", unsafe_allow_html=True)
-        else:
-            st.markdown("<h2 style='text-align: center;'> Original Model Performance </h2>", unsafe_allow_html=True)
-        if st.session_state.model_type in st.session_state.classification_models:
-            left_graph_col, middle_graph_col, right_graph_col = st.columns(3)
-            plot_classifier_performance_graphs(left_graph_col, middle_graph_col, right_graph_col, st.session_state.feats_selected_df, st.session_state.model_on_selected_feats)
-            # Time-Series Prediction
-            st.markdown("<h3 style='text-align: center;'> Time-Series Prediction </h3>", unsafe_allow_html=True)
-            _, pred_graph_col, _ = st.columns((1,4,1))
-            plot_classification_time_series_predictions(st.session_state.feats_selected_df, st.session_state.model_on_selected_feats, pred_graph_col)
-        elif st.session_state.model_type in st.session_state.regression_models:
-            left_graph_col, right_graph_col = st.columns((1,1))
-            plot_regressor_performance_graphs(left_graph_col, right_graph_col, st.session_state.feats_selected_df, st.session_state.model_on_selected_feats)
-            # Time-Series Prediction
-            st.markdown("<h3 style='text-align: center;'> Time-Series Prediction </h3>", unsafe_allow_html=True)
-            _, pred_graph_col, _ = st.columns((1,4,1))
-            plot_regression_time_series_predictions(st.session_state.feats_selected_df, st.session_state.model_on_selected_feats, pred_graph_col)
+    # ---- MODEL PERFORMANCE ---- #
+    st.subheader("Model Performance")
+    with st.container():
+        if st.session_state.model_on_selected_feats is not None:
+            # Model Performance
+            if st.session_state.perform_feature_selection == "Yes":
+                st.markdown("<h2 style='text-align: center;'> Model Performance on Selected Features </h2>", unsafe_allow_html=True)
+            else:
+                st.markdown("<h2 style='text-align: center;'> Original Model Performance </h2>", unsafe_allow_html=True)
+            if st.session_state.model_type in st.session_state.classification_models:
+                left_graph_col, middle_graph_col, right_graph_col = st.columns(3)
+                plot_classifier_performance_graphs(left_graph_col, middle_graph_col, right_graph_col, st.session_state.feats_selected_df, st.session_state.model_on_selected_feats)
+                # Time-Series Prediction
+                st.markdown("<h3 style='text-align: center;'> Time-Series Prediction </h3>", unsafe_allow_html=True)
+                _, pred_graph_col, _ = st.columns((1,4,1))
+                plot_classification_time_series_predictions(st.session_state.feats_selected_df, st.session_state.model_on_selected_feats, pred_graph_col)
+            elif st.session_state.model_type in st.session_state.regression_models:
+                left_graph_col, right_graph_col = st.columns((1,1))
+                plot_regressor_performance_graphs(left_graph_col, right_graph_col, st.session_state.feats_selected_df, st.session_state.model_on_selected_feats)
+                # Time-Series Prediction
+                st.markdown("<h3 style='text-align: center;'> Time-Series Prediction </h3>", unsafe_allow_html=True)
+                _, pred_graph_col, _ = st.columns((1,4,1))
+                plot_regression_time_series_predictions(st.session_state.feats_selected_df, st.session_state.model_on_selected_feats, pred_graph_col)

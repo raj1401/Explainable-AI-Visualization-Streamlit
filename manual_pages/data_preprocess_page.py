@@ -128,17 +128,18 @@ def write_preprocessing_needs_table():
     st.download_button(label="Download Processed Dataset", data=processed_csv, file_name="processed_dataset.csv", mime='text/csv', use_container_width=True)
 
 
-# ---- PAGE CONFIG ---- #
-st.set_page_config(page_title="Explainable AI", layout='wide')
+def show_data_preprocess_page():
+    # # ---- PAGE CONFIG ---- #
+    # st.set_page_config(page_title="Explainable AI", layout='wide')
 
-# ---- TITLE ---- #
-st.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
-st.write('---')
+    # # ---- TITLE ---- #
+    # st.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
+    # st.write('---')
 
 
-# ---- DATA PREPROCESSING ---- #
-st.subheader("Data Preprocessing")
-if st.session_state.processed_df is not None:
-    _, plt_col, _ = st.columns((1,4,1))
-    plot_initial_data(plt_col)
-    write_preprocessing_needs_table()
+    # ---- DATA PREPROCESSING ---- #
+    st.subheader("Data Preprocessing")
+    if st.session_state.processed_df is not None:
+        _, plt_col, _ = st.columns((1,4,1))
+        plot_initial_data(plt_col)
+        write_preprocessing_needs_table()
