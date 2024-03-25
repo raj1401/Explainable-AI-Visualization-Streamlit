@@ -15,6 +15,9 @@ if 'regression_models' not in st.session_state:
 if 'all_models' not in st.session_state:
     st.session_state.all_models = st.session_state.classification_models + st.session_state.regression_models
 
+if 'messages' not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you today?"}]
+
 if 'available_feat_select_algos' not in st.session_state:
     st.session_state.available_feat_select_algos = ["SHAP", "Recursive Feature Elimination", "Boruta"]
 
