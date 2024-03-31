@@ -2,6 +2,10 @@ import streamlit as sl
 import shap
 import numpy as np
 from sklearn.model_selection import train_test_split
+from langchain.agents import AgentType
+from langchain_experimental.agents import create_pandas_dataframe_agent
+from langchain_community.callbacks import StreamlitCallbackHandler
+from langchain_community.chat_models import ChatOpenAI
 
 from data_preprocessing import get_preprocessing_needs_table, plot_data
 from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features, fix_class_imbalance, interpolate_data, boxcox_transform, encode_categorical_features, get_correlation_matrix
@@ -33,6 +37,13 @@ from helper_functions import delete_folder_contents, data_file_loader, create_or
 
 # ---- GLOBAL VARIABLES ---- #
 TEMP_DIR = "temp_data"
+
+with open("openai-personal-api-key.txt", "r") as f:
+    openai_api_key = f.read().strip()
+
+# ---- SESSION STATE VARIABLES ---- #
+if 'messages' not in sl.session_state:
+    sl.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you today?"}]
 
 if 'classification_models' not in sl.session_state:
     sl.session_state.classification_models = ["Random Forest Classifier", "Logistic Regression", "KNN Classifier", "SVM Classifier"]
@@ -348,6 +359,43 @@ def write_preprocessing_needs_table():
 
     processed_csv = sl.session_state.processed_df.to_csv(index=False).encode('utf-8')
     sl.download_button(label="Download Processed Dataset", data=processed_csv, file_name="processed_dataset.csv", mime='text/csv', use_container_width=True)
+
+
+def reset_messages():
+    sl.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you today?"}]
+
+
+def llm_chat():
+    sl.sidebar.markdown("<h2 style='text-align: center;'> Chat with AI </h2>", unsafe_allow_html=True)
+    if sl.session_state.processed_df is None:
+        sl.sidebar.error("Please load a dataset first!")
+    else:
+        llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-0613", openai_api_key=openai_api_key, streaming=True)
+        df_agent = create_pandas_dataframe_agent(llm, sl.session_state.processed_df,
+                                                 verbose=True, agent_type=AgentType.OPENAI_FUNCTIONS,
+                                                 handle_parsing_errors=True
+                                                 )
+        with sl.sidebar:
+            messages = sl.container()
+            for msg in sl.session_state.messages:
+                messages.chat_message(msg["role"]).write(msg["content"])
+            
+            if prompt := sl.chat_input("Your query", max_chars=200):
+                messages.chat_message("user").write(prompt)
+                sl.session_state.messages.append({"role": "user", "content": prompt})
+                response = df_agent.run(sl.session_state.messages)
+                sl.session_state.messages.append({"role": "assistant", "content": response})
+                messages.chat_message("assistant").write(response)
+                # with messages.chat_message("assistant"):
+                    # sl_cb = StreamlitCallbackHandler(sl.container(), expand_new_thoughts=False)
+                    # response = df_agent.run(sl.session_state.messages, callbacks=[sl_cb])
+                    # response = df_agent.run(sl.session_state.messages)
+                    # sl.session_state.messages.append({"role": "assistant", "content": response})
+                    # messages.chat_message("assistant").write(response)
+                
+        
+        sl.sidebar.button("Reset Chat", on_click=reset_messages)
+    
 
 
 def train_final_model():
@@ -758,6 +806,7 @@ with sl.container():
         # _, preprocess_col, _ = sl.columns((1,4,1))
         # preprocess_button = sl.button("Check Preprocessing Needs", use_container_width=True)
         if sl.session_state.processed_df is not None:
+            llm_chat()
             _, plt_col, _ = sl.columns((1,4,1))
             plot_initial_data(plt_col)
             write_preprocessing_needs_table()
