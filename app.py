@@ -41,9 +41,12 @@ TEMP_DIR = "temp_data"
 with open("openai-personal-api-key.txt", "r") as f:
     openai_api_key = f.read().strip()
 
+with open("dashboard_context_llm.txt", "r") as f:
+    dashboard_context = f.read()
+
 # ---- SESSION STATE VARIABLES ---- #
 if 'messages' not in sl.session_state:
-    sl.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you today?"}]
+    sl.session_state.messages = [{"context":dashboard_context}, {"role": "assistant", "content": "Hello! How can I help you today?"}]
 
 if 'classification_models' not in sl.session_state:
     sl.session_state.classification_models = ["Random Forest Classifier", "Logistic Regression", "KNN Classifier", "SVM Classifier"]
@@ -362,7 +365,7 @@ def write_preprocessing_needs_table():
 
 
 def reset_messages():
-    sl.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you today?"}]
+    sl.session_state.messages = [{"context":dashboard_context}, {"role": "assistant", "content": "Hello! How can I help you today?"}]
 
 
 def llm_chat():
@@ -373,12 +376,14 @@ def llm_chat():
         llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-0613", openai_api_key=openai_api_key, streaming=True)
         df_agent = create_pandas_dataframe_agent(llm, sl.session_state.processed_df,
                                                  verbose=True, agent_type=AgentType.OPENAI_FUNCTIONS,
-                                                 handle_parsing_errors=True
                                                  )
         with sl.sidebar:
             messages = sl.container()
             for msg in sl.session_state.messages:
-                messages.chat_message(msg["role"]).write(msg["content"])
+                try:
+                    messages.chat_message(msg["role"]).write(msg["content"])
+                except:
+                    pass
             
             if prompt := sl.chat_input("Your query", max_chars=200):
                 messages.chat_message("user").write(prompt)

@@ -1,0 +1,16 @@
+This dashboard is an autonomic machine learning platform that is used to train machine-learning
+platforms on tabular time-series data. The platform has the following functionalities:
+Data Preprocessing - The user can perform detect and remove null values, inconsistencies, duplicates,
+outliers, scale the data, impute the data to make it periodic, and label encode non-numeric data.
+Model Training - The user can select one of regression models (Random Forest regressor, Linear Regression,
+KNN regressor, SVM regressor) or classification models (Random Forest classifier, Logistic Regression,
+KNN classifier, SVM classifier) depending on the type of target variable (whether it is continuous
+or discrete). The platform performs a five-fold cross validation to tune the hyperparameters, which the
+user has an option to change. A final model is trained based on the final hyperparameters.
+Feature Selection - Importance of various features of the data can be computed using SHAP, Recursive
+Feature Elimination, or Boruta Algorithm (only for Random Forest models).
+Model Performance - The performance of the final model (trained either on all features or selected features)
+can be visualized as various graphs and metrics.
+Forecasting - The platform allows for univariate time-series forecasting using an LSTM RNN, whose
+hyperparameters can be set by the user.
+ 
