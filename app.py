@@ -750,10 +750,10 @@ def reset_lstm_model():
 
 
 # ---- PAGE CONFIG ---- #
-sl.set_page_config(page_title="Explainable AI", layout='wide')
+sl.set_page_config(page_title="Bluegill", layout='wide')
 
 # ---- HEADER SECTION ---- #
-sl.markdown("<h1 style='text-align: center;'> DPI - ML Platform </h1>", unsafe_allow_html=True)
+sl.markdown("<h1 style='text-align: center;'> Bluegill: An Autonomic ML Platform </h1>", unsafe_allow_html=True)
 # sl.markdown("<h3 style='text-align: center;'> Explainable AI: Modeling and Visualization </h1>", unsafe_allow_html=True)
 # sl.markdown("<h5 style='text-align: center;'> Made By Raj Mehta </h5>", unsafe_allow_html=True)
 
