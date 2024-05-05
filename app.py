@@ -6,6 +6,8 @@ from langchain.agents import AgentType
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_community.callbacks import StreamlitCallbackHandler
 from langchain_community.chat_models import ChatOpenAI
+import os
+import pandas as pd
 
 from data_preprocessing import get_preprocessing_needs_table, plot_data
 from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features, fix_class_imbalance, interpolate_data, boxcox_transform, encode_categorical_features, get_correlation_matrix
@@ -47,6 +49,9 @@ with open("dashboard_context_llm.txt", "r") as f:
 # ---- SESSION STATE VARIABLES ---- #
 if 'messages' not in sl.session_state:
     sl.session_state.messages = [{"context":dashboard_context}, {"role": "assistant", "content": "Hello! How can I help you today?"}]
+
+if 'wwtp_list' not in sl.session_state:
+    sl.session_state.wwtp_list = ['Stickney']
 
 if 'classification_models' not in sl.session_state:
     sl.session_state.classification_models = ["Random Forest Classifier", "Logistic Regression", "KNN Classifier", "SVM Classifier"]
@@ -116,6 +121,11 @@ if 'box_cox_dict' not in sl.session_state:
 
 
 # ---- HELPER FUNCTIONS ---- #
+def get_wwtp_data(wwtp_name):
+    if wwtp_name == "Stickney":
+        return pd.read_csv(os.path.join("WWTP_data", "Stickney.csv")) 
+
+
 def on_click_search_params():
     if model_type == "Random Forest Classifier":
         # Change this later
@@ -718,25 +728,12 @@ def plot_forecasts(new_data, left_col, right_col):
 
 
 def plot_lstm_forecasts_single(input_data_file, future_steps, plot_col, batch_size, lookback, hidden_size, num_layers):
-    input_df = data_file_loader(input_data_file, temp_dir=TEMP_DIR)
+    # input_df = data_file_loader(input_data_file, temp_dir=TEMP_DIR)
+    input_df = input_data_file
     fig, err_msg, trained_lstm = lstm_regression_forecasting(df=input_df, test_fraction=sl.session_state.TEST_FRACTION,
                                                             random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, from_df=True,
                                                             future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model,
                                                             batch_size=batch_size, lookback=lookback, hidden_size=hidden_size,
-                                                            num_layers=num_layers)
-    sl.session_state.LSTM_Model = trained_lstm
-    if fig is None:
-        plot_col.write(err_msg)
-    else:
-        plot_col.write(fig)
-
-
-def plot_lstm_forecasts_multiple(input_data_file, future_steps, plot_col, batch_size, hidden_size, num_layers):
-    y_list = multi_time_series_loader(input_data_file, temp_dir=TEMP_DIR)
-    fig, err_msg, trained_lstm = lstm_regression_forecasting(df=None, y_list=y_list, test_fraction=sl.session_state.TEST_FRACTION,
-                                                            random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, from_df=False,
-                                                            future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model,
-                                                            batch_size=batch_size, hidden_size=hidden_size,
                                                             num_layers=num_layers)
     sl.session_state.LSTM_Model = trained_lstm
     if fig is None:
@@ -754,6 +751,7 @@ sl.set_page_config(page_title="Bluegill", layout='wide')
 
 # ---- HEADER SECTION ---- #
 sl.markdown("<h1 style='text-align: center;'> Bluegill: An Autonomic ML Platform </h1>", unsafe_allow_html=True)
+sl.markdown("<h2 style='text-align: center;'> WBE Science Gateway </h1>", unsafe_allow_html=True)
 # sl.markdown("<h3 style='text-align: center;'> Explainable AI: Modeling and Visualization </h1>", unsafe_allow_html=True)
 # sl.markdown("<h5 style='text-align: center;'> Made By Raj Mehta </h5>", unsafe_allow_html=True)
 
@@ -785,10 +783,13 @@ sl.subheader("Input Data")
 
 
 with sl.container():
-    sl.write("Upload your data here and specify the independent variables, target variable, and time variable below:")
-    data = sl.file_uploader("Input Data", type="csv")
+    sl.write("Choose the Wastewater Treatment Plant (WWTP) you want to analyze:")
+    wwtp_plant = sl.selectbox("Select WWTP", options=sl.session_state.wwtp_list)
+    sl.session_state.original_df = get_wwtp_data(wwtp_plant)
+    sl.write("Specify the independent variables, target variable, and time variable below:")
+    # data = sl.file_uploader("Input Data", type="csv")
 
-    sl.session_state.original_df = data_file_loader(data, temp_dir=TEMP_DIR)
+    # sl.session_state.original_df = data_file_loader(data, temp_dir=TEMP_DIR)
 
     if sl.session_state.original_df is not None:
         sl.session_state.all_col_names = sl.session_state.original_df.columns
@@ -988,69 +989,44 @@ with sl.container():
     if sl.session_state.model_on_selected_feats is not None:
         sl.markdown("<h2 style='text-align: center;'> Forecasting From The Data </h2>", unsafe_allow_html=True)
         sl.write("""
-                 Forecasting from any provided data can be a univariate or a multivariate problem. In the univariate
-                 setting, we try to predict the future values of a time-series using only the values it takes in the
-                 previous time steps. We accomplish this usually by training a Recurrent Neural Network.
-                 On the other hand, in the multivariate setting, we try to predict the future
-                 values of a time-series based on other independent variables whose values are/will be known in the future.
+                 Forecasting from the data uses a univariate approach where we try to predict the future values of a time-series
+                 using only the values it takes in the previous time steps. We accomplish this by training a Recurrent Neural Network.
         """)
-        problem_type = sl.selectbox("Problem Type", options=["Univariate", "Multivariate"], on_change=reset_lstm_model)
+        # problem_type = sl.selectbox("Problem Type", options=["Univariate", "Multivariate"], on_change=reset_lstm_model)
 
-        if problem_type == "Univariate":
-            sl.write("""We can train an LSTM, a special kind of Recurrent Neural Network (RNN) to predict future values
-                     from a periodic time-series data. Do you want to upload a DataFrame (CSV File) to predict future values of the
-                     time series it contains in its last column, or do you want to upload a DataFrame (CSV File) that contains
-                     multiple time-series data of the same target variable and same periodicity in its columns and train the LSTM on them?
-                     The latter is recommended if you have 100s of time-series data.""")
-            input_type = sl.selectbox("Input Type", options=["Single DataFrame", "Multiple Data Series"], on_change=reset_lstm_model)
-            
-            sl.write("How many time steps in the future do you want to make the predictions?")
-            f_col, _ = sl.columns((1,3))
-            future_steps = f_col.number_input("Future Time Steps", min_value=20, step=1)
-            sl.write("Model and Training Hyperparameters")
-            col1, col2, col3, col4 = sl.columns(4)
-            batch_size = col1.number_input("Batch Size", min_value=4, step=1, on_change=reset_lstm_model)
-            hidden_size = col2.number_input("LSTM Hidden State Size", min_value=8, step=1, on_change=reset_lstm_model)
-            num_layers = col3.number_input("Number of Hidden LSTM Layers", min_value=1, step=1, on_change=reset_lstm_model)
+        sl.write("""We can train an LSTM, a special kind of Recurrent Neural Network (RNN) to predict future values
+                    from a periodic time-series data.""")
+        # input_type = sl.selectbox("Input Type", options=["Single DataFrame", "Multiple Data Series"], on_change=reset_lstm_model)
+        
+        sl.write("Choose the Wastewater Treatment Plant (WWTP) you want to forecast for:")
+        wwtp_plant = sl.selectbox("Select WWTP For Forecasting", options=sl.session_state.wwtp_list)
+        forecast_data = get_wwtp_data(wwtp_plant)
 
-            if input_type == "Single DataFrame":
-                lookback = col4.number_input("Window Size", min_value=1, step=1, on_change=reset_lstm_model)
-                single_df_data = sl.file_uploader("Single DataFrame", type="csv")
-                if single_df_data is not None:
-                    _, plot_col, _ = sl.columns((1,4,1))
-                    # sl.session_state.LSTM_plot_col = plot_col
-                    # plot_col.button("Train LSTM Model", use_container_width=True, on_click=plot_lstm_forecasts_single, args=(single_df_data, future_steps, plot_col, batch_size, lookback, hidden_size, num_layers))
-                    plot_lstm_forecasts_single(input_data_file=single_df_data, future_steps=future_steps, plot_col=plot_col,
-                                               batch_size=batch_size, lookback=lookback, hidden_size=hidden_size, num_layers=num_layers)
-            
-            if input_type == "Multiple Data Series":
-                multi_df_data = sl.file_uploader("Multiple Data Series", type="csv")
-                if multi_df_data is not None:
-                    _, plot_col, _ = sl.columns((1,4,1))
-                    # sl.session_state.LSTM_plot_col = plot_col
-                    # plot_col.button("Train LSTM Model", use_container_width=True, on_click=plot_lstm_forecasts_multiple, args=(multi_df_data, future_steps, plot_col, batch_size, hidden_size, num_layers))
-                    plot_lstm_forecasts_multiple(input_data_file=multi_df_data, future_steps=future_steps, plot_col=plot_col,
-                                                 batch_size=batch_size, hidden_size=hidden_size, num_layers=num_layers)
+        sl.write("Select the variable you want to forecast:")
+        time_name = sl.selectbox("Time Column", options=forecast_data.columns, on_change=reset_lstm_model)
+        forecast_var = sl.selectbox("Forecast Variable", options=forecast_data.columns, on_change=reset_lstm_model)
+        forecast_data = forecast_data[[time_name, forecast_var]]
 
-            # if new_data is not None:
-            #     _, plot_col, _ = sl.columns((1,4,1))
-            #     plot_lstm_forecasts(input_type=input_type, input_data_file=new_data, future_steps=future_steps, plot_col=plot_col)
+        sl.write("How many time steps in the future do you want to make the predictions?")
+        f_col, _ = sl.columns((1,3))
+        future_steps = f_col.number_input("Future Time Steps", min_value=20, step=1)
+        sl.write("Model and Training Hyperparameters")
+        col1, col2, col3, col4 = sl.columns(4)
+        batch_size = col1.number_input("Batch Size", min_value=4, step=1, on_change=reset_lstm_model)
+        hidden_size = col2.number_input("LSTM Hidden State Size", min_value=8, step=1, on_change=reset_lstm_model)
+        num_layers = col3.number_input("Number of Hidden LSTM Layers", min_value=1, step=1, on_change=reset_lstm_model)
 
-        if problem_type == "Multivariate":
-            # Getting New Data
-            sl.write("""You can now use the above trained model to make predictions
-                        about the target variable using your own data. Make sure that the data that you upload only has
-                        the features that were chosen above to train the final model (the first column should
-                        have the time the data points were recorded).""")
-            # sl.markdown("""<h5 style='text-align: center;'> You can now use the above trained model to make predictions
-            #             about the target variable using your own data. Make sure that the data that you upload only has
-            #             the features that were chosen above to train the final model (the first column should
-            #             have the time the data points were recorded). </h5>""", unsafe_allow_html= True)
+        lookback = col4.number_input("Window Size", min_value=1, step=1, on_change=reset_lstm_model)
+        # single_df_data = sl.file_uploader("Single DataFrame", type="csv")
+        if sl.button("Train LSTM Model", use_container_width=True):
+            _, plot_col, _ = sl.columns((1,4,1))
+            # sl.session_state.LSTM_plot_col = plot_col
+            # plot_col.button("Train LSTM Model", use_container_width=True, on_click=plot_lstm_forecasts_single, args=(single_df_data, future_steps, plot_col, batch_size, lookback, hidden_size, num_layers))
+            plot_lstm_forecasts_single(input_data_file=forecast_data, future_steps=future_steps, plot_col=plot_col,
+                                        batch_size=batch_size, lookback=lookback, hidden_size=hidden_size, num_layers=num_layers)
+    
 
-            new_data = sl.file_uploader("New Input Data", type="csv")
-            if new_data is not None:
-                left_graph_col, right_col = sl.columns((3,1))
-                plot_forecasts(new_data, left_graph_col, right_col)
+
 
 
 
