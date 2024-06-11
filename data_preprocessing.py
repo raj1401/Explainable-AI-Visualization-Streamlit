@@ -359,6 +359,8 @@ def get_correlation_matrix(df: pd.DataFrame, method: str = 'pearson'):
 #############################################################################
 
 def plot_data(df: pd.DataFrame):
+    if len(df) > 50:
+        df = df.iloc[:50]
     # Assume first column of dataframe has dates
     # Last column has target variable
     # Rest of the columns are features
@@ -367,8 +369,8 @@ def plot_data(df: pd.DataFrame):
         target_column = df.columns[-1]
         feature_columns = df.columns[1:-1]
 
-        dates = df[date_column].astype(str)
-        xticks = dates.iloc[::len(dates)//10]
+        # dates = df[date_column].astype(str)
+        # xticks = dates.iloc[::len(dates)//10]
 
         total_plots = len(feature_columns) + 1
         ax_num = math.ceil(math.sqrt(total_plots))
@@ -386,14 +388,19 @@ def plot_data(df: pd.DataFrame):
         i, j = 0, 0
         for feature in feature_columns:
             try:
-                ax[i][j].plot(df[date_column], df[feature], label=feature)
+                # If feature column is categorical, plot bar chart
+                if df[feature].nunique() <= 10:
+                    sns.countplot(x=feature, data=df, ax=ax[i][j])
+                else:
+                    ax[i][j].plot(df[date_column], df[feature], label=feature)
             except:
                 # Write as text
                 ax[i][j].text(0.5, 0.5, f"Cannot plot {feature}", horizontalalignment='center', verticalalignment='center', transform=ax[i][j].transAxes)
-            ax[i][j].set_xlabel("Dates")
+            # ax[i][j].set_xlabel("Dates")
+            ax[i][j].set_xlabel(date_column)
             ax[i][j].set_ylabel(feature)
-            ax[i][j].set_xticks(xticks)
-            ax[i][j].set_xticklabels(xticks, rotation=90)
+            # ax[i][j].set_xticks(xticks)
+            # ax[i][j].set_xticklabels(xticks, rotation=90)
 
             if j == ax_num - 1:
                 i += 1
@@ -408,9 +415,9 @@ def plot_data(df: pd.DataFrame):
         # ax[0].set_xticks([])
         # Plot target column against date column
         ax[i][j].plot(df[date_column], df[target_column], label=target_column, color='black')
-        ax[i][j].set_xlabel("Dates")
-        ax[i][j].set_xticks(xticks)
-        ax[i][j].set_xticklabels(xticks, rotation=90)
+        ax[i][j].set_xlabel(date_column)
+        # ax[i][j].set_xticks(xticks)
+        # ax[i][j].set_xticklabels(xticks, rotation=90)
         ax[i][j].set_ylabel('Target Variable')
 
         fig.suptitle('Data Visualization', fontsize=16)

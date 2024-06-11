@@ -639,14 +639,14 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
         else:
             middle_col.write(fig)
 
-    # Heatmap
-    with right_col:
-        right_col.markdown("<h4 style='text-align: center;'> Heatmap </h4>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_heatmap(shap_values, max_display=len(X_test.columns))
-        if fig is None:
-            right_col.error(err_msg)
-        else:
-            right_col.write(fig)
+    # # Heatmap
+    # with right_col:
+    #     right_col.markdown("<h4 style='text-align: center;'> Heatmap </h4>", unsafe_allow_html=True)
+    #     fig, err_msg = plot_shap_heatmap(shap_values, max_display=len(X_test.columns))
+    #     if fig is None:
+    #         right_col.error(err_msg)
+    #     else:
+    #         right_col.write(fig)
 
 
 def plot_rfe_features(col, df, model):
@@ -900,7 +900,9 @@ with sl.container():
             if "SHAP" in feature_selection_algorithms:
                 # SHAP Values
                 sl.markdown("<h3 style='text-align: center;'> SHAP Values </h3>", unsafe_allow_html=True)
-                left_shap_col, middle_shap_col, right_shap_col = sl.columns(3)
+                # left_shap_col, middle_shap_col, right_shap_col = sl.columns(3)
+                left_shap_col, middle_shap_col = sl.columns(2)
+                right_shap_col = None
                 plot_shap_graphs(left_shap_col, middle_shap_col, right_shap_col, sl.session_state.processed_df, sl.session_state.final_model)
             
             # IMPLEMENT RFE AND BARUTA LATER
@@ -965,14 +967,14 @@ with sl.container():
             left_graph_col, middle_graph_col, right_graph_col = sl.columns(3)
             plot_classifier_performance_graphs(left_graph_col, middle_graph_col, right_graph_col, sl.session_state.feats_selected_df, sl.session_state.model_on_selected_feats)
             # Time-Series Prediction
-            sl.markdown("<h3 style='text-align: center;'> Time-Series Prediction </h3>", unsafe_allow_html=True)
+            sl.markdown("<h3 style='text-align: center;'> Prediction </h3>", unsafe_allow_html=True)
             _, pred_graph_col, _ = sl.columns((1,4,1))
             plot_classification_time_series_predictions(sl.session_state.feats_selected_df, sl.session_state.model_on_selected_feats, pred_graph_col)
         elif model_type in sl.session_state.regression_models:
             left_graph_col, right_graph_col = sl.columns((1,1))
             plot_regressor_performance_graphs(left_graph_col, right_graph_col, sl.session_state.feats_selected_df, sl.session_state.model_on_selected_feats)
             # Time-Series Prediction
-            sl.markdown("<h3 style='text-align: center;'> Time-Series Prediction </h3>", unsafe_allow_html=True)
+            sl.markdown("<h3 style='text-align: center;'> Prediction </h3>", unsafe_allow_html=True)
             _, pred_graph_col, _ = sl.columns((1,4,1))
             plot_regression_time_series_predictions(sl.session_state.feats_selected_df, sl.session_state.model_on_selected_feats, pred_graph_col)
 
