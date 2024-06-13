@@ -9,7 +9,7 @@ from langchain_community.chat_models import ChatOpenAI
 import os
 import pandas as pd
 
-from data_preprocessing import get_preprocessing_needs_table, plot_data
+from data_preprocessing import get_preprocessing_needs_table, plot_data, plot_data_plotly
 from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features, fix_class_imbalance, interpolate_data, boxcox_transform, encode_categorical_features, get_correlation_matrix
 
 from model_creation_and_training import create_and_search_tree_classifier, train_final_classifier
@@ -51,7 +51,7 @@ if 'messages' not in sl.session_state:
     sl.session_state.messages = [{"context":dashboard_context}, {"role": "assistant", "content": "Hello! How can I help you today?"}]
 
 if 'wwtp_list' not in sl.session_state:
-    sl.session_state.wwtp_list = ['Stickney']
+    sl.session_state.wwtp_list = ['Stickney', 'Calumet', 'Obrien']
 
 if 'classification_models' not in sl.session_state:
     sl.session_state.classification_models = ["Random Forest Classifier", "Logistic Regression", "KNN Classifier", "SVM Classifier"]
@@ -122,8 +122,7 @@ if 'box_cox_dict' not in sl.session_state:
 
 # ---- HELPER FUNCTIONS ---- #
 def get_wwtp_data(wwtp_name):
-    if wwtp_name == "Stickney":
-        return pd.read_csv(os.path.join("WWTP_data", "Stickney.csv")) 
+    return pd.read_csv(os.path.join("WWTP_data", f"{wwtp_name}_integrated_data_cleaned.csv"))
 
 
 def on_click_search_params():
@@ -236,12 +235,14 @@ def reset_on_change_feat_select():
     sl.session_state.model_on_selected_feats = None
 
 
-def plot_initial_data(plt_col):
-    fig, err_msg = plot_data(sl.session_state.processed_df)
+def plot_initial_data(p_col):
+    fig, err_msg = plot_data_plotly(sl.session_state.processed_df)
     if fig is None:
-        plt_col.error(err_msg)
+        p_col.error(err_msg)
     else:
-        plt_col.write(fig)
+        # plt_col.write(fig)
+        p_col.markdown("<h4 style='text-align: center;'> Data Visualization </h4>", unsafe_allow_html=True)
+        sl.plotly_chart(fig, use_container_width=True)
 
 
 def remove_null_values_in_data():
@@ -751,20 +752,22 @@ sl.set_page_config(page_title="Bluegill", layout='wide')
 
 # ---- HEADER SECTION ---- #
 sl.markdown("<h1 style='text-align: center;'> Bluegill: An Autonomic ML Platform </h1>", unsafe_allow_html=True)
-sl.markdown("<h2 style='text-align: center;'> WBE Science Gateway </h1>", unsafe_allow_html=True)
+sl.markdown("<h2 style='text-align: center;'> WBE Science Gateway </h2>", unsafe_allow_html=True)
 # sl.markdown("<h3 style='text-align: center;'> Explainable AI: Modeling and Visualization </h1>", unsafe_allow_html=True)
 # sl.markdown("<h5 style='text-align: center;'> Made By Raj Mehta </h5>", unsafe_allow_html=True)
 
 sl.write('---')
 
 sl.markdown("""
-            This app allows you to train machine learning models for regression and classification tasks.
-            Furthermore, it allows you to visualize its performance and compute feature importance using 
-            various techniques such as SHAP, Recursive Feature Elimination (RFE), and Boruta algorithm. 
-            Using the most important features computed using these techniques, you can train a final 
-            machine learning model that can be used for forecasting future trends in your data. This
-            app also allows you to train a standalone univariate time series forecasting model using
-            LSTM networks.
+            This app integrates varied data sources, such as HRRR Climatic Data,
+            Sentinel-5P Air Quality Data, and WorldPop Population Data extracted for each
+            Wastewater Treatment Plant (WWTP) region, updated weekly. It allows you to
+            train machine learning models on the features extracted from these datasets
+            to predict COVID-19 N1 concentration levels measured in the WWTP influent.
+            State-of-the-art feature importance tehniques such as SHAP and Boruta are provided
+            to help you understand the model's predictions. The COVID-19 N1 concentration levels
+            can also be forecasted for the desired number of time-steps in the future using methods
+            such as ARIMA and LSTM regression.
 """)
 
 sl.write('---')
@@ -784,7 +787,10 @@ sl.subheader("Input Data")
 
 with sl.container():
     sl.write("Choose the Wastewater Treatment Plant (WWTP) you want to analyze:")
-    wwtp_plant = sl.selectbox("Select WWTP", options=sl.session_state.wwtp_list)
+    wwtp_col, _ = sl.columns((1, 2))
+    with wwtp_col:
+        wwtp_plant = sl.selectbox("Select WWTP", options=sl.session_state.wwtp_list)
+
     sl.session_state.original_df = get_wwtp_data(wwtp_plant)
     sl.write("Specify the independent variables, target variable, and time variable below:")
     # data = sl.file_uploader("Input Data", type="csv")
@@ -795,17 +801,38 @@ with sl.container():
         sl.session_state.all_col_names = sl.session_state.original_df.columns
     
     if sl.session_state.all_col_names is not None:
-        sl.session_state.time_col = sl.selectbox("Column Indicating Time", options=sl.session_state.all_col_names)
+        t_col, target_col = sl.columns(2)
+        with t_col:
+            sl.session_state.time_col = sl.selectbox("Column Indicating Time", options=sl.session_state.all_col_names)
+        
+        with target_col:
+            sl.session_state.target_var = sl.selectbox("Target Variable", options=sl.session_state.all_col_names)
+        
         sl.session_state.independent_feats = sl.multiselect("Independent Features", options=sl.session_state.all_col_names)
-        sl.session_state.target_var = sl.selectbox("Target Variable", options=sl.session_state.all_col_names)
+
+        binarize_target_col, threshold_col = sl.columns((1,3))
+        with binarize_target_col:
+            binarize_target = sl.checkbox("Binarize Target Variable", value=False)
+        
+        with threshold_col:
+            if binarize_target:
+                binarize_threshold = sl.slider(
+                    "Threshold Value",
+                    min_value=sl.session_state.original_df[sl.session_state.target_var].min(),
+                    max_value=sl.session_state.original_df[sl.session_state.target_var].max(),
+                    value=sl.session_state.original_df[sl.session_state.target_var].mean()
+                )
+            else:
+                binarize_threshold = None
 
     if ((sl.session_state.time_col is not None) and
         (sl.session_state.independent_feats != []) and
         (sl.session_state.target_var is not None)):
         sl.session_state.dataframe = create_ordered_dataframe(sl.session_state.original_df, sl.session_state.time_col, 
-                                                              sl.session_state.independent_feats, sl.session_state.target_var)
+                                                              sl.session_state.independent_feats, sl.session_state.target_var,
+                                                              binarize_threshold)
         
-        if sl.button("Submit Features"):
+        if sl.button("Submit Features", use_container_width=True):
             sl.session_state.processed_df = sl.session_state.dataframe.copy(deep=True)
             sl.success("Features Submitted!")
         sl.subheader("Data Preprocessing")

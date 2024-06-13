@@ -8,6 +8,8 @@ from imblearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 import seaborn as sns
 from scipy import stats
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 def detect_null_values(df: pd.DataFrame):
@@ -134,7 +136,8 @@ def detect_periodicity(df: pd.DataFrame):
         # Assume first column of dataframe has dates
         date_column = df.columns[0]
         # Calculate the frequency of the time series data
-        time_diffs = df[date_column].diff().dropna()
+        dates_series = pd.to_datetime(df[date_column], dayfirst=False)
+        time_diffs = dates_series.diff().dropna()
         most_common_periodicity = time_diffs.mode()[0]
         min_periodicity = time_diffs.min()
         # time_diffs = time_diffs.dt.total_seconds()
@@ -415,6 +418,60 @@ def plot_data(df: pd.DataFrame):
 
         fig.suptitle('Data Visualization', fontsize=16)
         plt.tight_layout()        
+        return fig, None
+    except Exception as e:
+        return None, e
+
+
+def plot_data_plotly(df: pd.DataFrame):
+    # Assume first column of dataframe has dates
+    # Last column has target variable
+    # Rest of the columns are features
+    try:
+        date_column = df.columns[0]
+        target_column = df.columns[-1]
+        feature_columns = df.columns[1:-1]
+
+        dates = df[date_column].astype(str)
+        xticks = dates.iloc[::len(dates)//10]
+
+        total_plots = len(feature_columns) + 1
+        ax_num = math.ceil(math.sqrt(total_plots))
+
+        if total_plots <= ax_num * (ax_num - 1):
+            ncols = ax_num
+            nrows = math.ceil(total_plots / ncols)
+        else:
+            nrows = ax_num
+            ncols = math.ceil(total_plots / nrows)
+        
+        fig = make_subplots(rows=nrows, cols=ncols, subplot_titles=df.columns[1:], horizontal_spacing=0.1, vertical_spacing=0.25)
+
+        # Plot each feature column against date column
+        i, j = 1, 1
+        for feature in feature_columns:
+            try:
+                fig.add_trace(go.Scatter(x=df[date_column], y=df[feature], mode='lines', name=feature), row=i, col=j)
+            except:
+                # Write as text
+                fig.add_annotation(text=f"Cannot plot {feature}", x=0.5, y=0.5, showarrow=False, row=i, col=j)
+            fig.update_xaxes(title_text="Dates", row=i, col=j)
+            fig.update_yaxes(title_text=feature, row=i, col=j)
+            fig.update_xaxes(tickvals=xticks, ticktext=xticks, row=i, col=j)
+
+            if j == ax_num:
+                i += 1
+                j = 1
+            else:
+                j += 1
+        
+        # Plot target column against date column
+        fig.add_trace(go.Scatter(x=df[date_column], y=df[target_column], mode='lines', name=target_column), row=i, col=j)
+        fig.update_xaxes(title_text="Dates", row=i, col=j)
+        fig.update_yaxes(title_text='Target Variable', row=i, col=j)
+        fig.update_xaxes(tickvals=xticks, ticktext=xticks, row=i, col=j)
+
+        fig.update_layout(showlegend=False, height=800, width=1000, margin=dict(l=40, r=40, t=40, b=40))
         return fig, None
     except Exception as e:
         return None, e

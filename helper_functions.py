@@ -35,11 +35,14 @@ def data_file_loader(data_file, temp_dir):
         return None
 
 @sl.cache_data
-def create_ordered_dataframe(original_df, time_col, independent_feats, target_var):
+def create_ordered_dataframe(original_df, time_col, independent_feats, target_var, binarize_threshold=None):
     df = pd.DataFrame()
     df[time_col] = original_df[time_col]
     df[independent_feats] = original_df[independent_feats]
-    df[target_var] = original_df[target_var]
+    if binarize_threshold is not None:
+        df[target_var] = original_df[target_var].apply(lambda x: 1 if x >= binarize_threshold else 0).astype('float64')
+    else:
+        df[target_var] = original_df[target_var]
     return df
 
 
