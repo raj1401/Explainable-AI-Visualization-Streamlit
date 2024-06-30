@@ -273,13 +273,15 @@ def get_regression_metrics(df, _model, random_state, test_fraction):
 
         exp_var_score = explained_variance_score(y_test, test_pred)
         mse = mean_squared_error(y_test, test_pred)
+        # Percentage error
+        avg_perc_dev = np.mean(np.abs(y_test - test_pred) / y_test)
         r2_scr = r2_score(y_test, test_pred)
 
         exp_var_score = round(exp_var_score, 3)
         mse = round(mse, 3)
         r2_scr = round(r2_scr, 3)
 
-        return exp_var_score, mse, r2_scr, None
+        return exp_var_score, mse, avg_perc_dev, r2_scr, None
     except Exception as e:
         return None, None, None, e
 
@@ -325,14 +327,14 @@ def get_regression_time_series_predictions(df, _model, random_state, test_fracti
         ax.text(0.15*len(y), y_max + 0.075*(y_max-y_min), 'Training and Validation Set', verticalalignment='center', fontsize=12)
         ax.text(0.85*len(y), y_max + 0.075*(y_max-y_min), 'Testing Set', verticalalignment='center', fontsize=12)
 
-        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.05))
+        ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.05))
         
         #ax.set_ylim(bottom=y_min - 0.1*(y_max-y_min), top=y_max + 0.5*(y_max-y_min))
         ax.set_ylabel(target_name)
         ax.set_xlabel("Time Steps")
         ax.set_xticks(x_ticks)
         ax.set_xticklabels(x_ticks, rotation=90)
-        ax.set_title(f"Model's Performance on Predicting {target_name} values \n from Selected Features")
+        ax.set_title(f"Model's Performance on Predicting {target_name} values \n from Selected Features \n")
         
         return fig, None
     except Exception as e:

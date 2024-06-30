@@ -259,6 +259,7 @@ def scale_features(df: pd.DataFrame):
     from sklearn.preprocessing import MinMaxScaler
     scaler = MinMaxScaler()
     df.iloc[:, 1:-1] = scaler.fit_transform(df.iloc[:, 1:-1])
+    # df.iloc[:, 1:] = scaler.fit_transform(df.iloc[:, 1:])
     return df
 
 

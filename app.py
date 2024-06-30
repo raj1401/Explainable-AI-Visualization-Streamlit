@@ -572,12 +572,13 @@ def plot_regressor_performance_graphs(left_col, right_col, df, model):
     # RMSE On Train and Test Set
     with right_col:
         right_col.markdown("<h3 style='text-align: center;'> Regression Metrics </h3>", unsafe_allow_html=True)
-        exp_var_score, mse, r2_scr, err_msg = get_regression_metrics(df=df, _model=model, 
-                                             random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, 
-                                             test_fraction=sl.session_state.TEST_FRACTION)
+        exp_var_score, mse, avg_perc_dev, r2_scr, err_msg = get_regression_metrics(df=df, _model=model, 
+                                                            random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, 
+                                                            test_fraction=sl.session_state.TEST_FRACTION)
         if err_msg is None:
             right_col.markdown(f"<h5 style='text-align: center;'> <i> Explained Variance Score </i> = {exp_var_score} </h5>", unsafe_allow_html=True)
-            right_col.markdown(f"<h5 style='text-align: center;'> <i> Mean Squared Error </i> = {mse} </h5>", unsafe_allow_html=True)
+            # right_col.markdown(f"<h5 style='text-align: center;'> <i> Mean Squared Error </i> = {mse} </h5>", unsafe_allow_html=True)
+            right_col.markdown(f"<h5 style='text-align: center;'> <i> Average Deviation </i> = {round(avg_perc_dev, 2)} % </h5>", unsafe_allow_html=True)
             right_col.markdown(f"<h5 style='text-align: center;'> <i> R2 Score </i> = {r2_scr} </h5>", unsafe_allow_html=True)
         else:
             right_col.write(err_msg)
@@ -751,19 +752,18 @@ def reset_lstm_model():
 sl.set_page_config(page_title="Bluegill", layout='wide')
 
 # ---- HEADER SECTION ---- #
-sl.markdown("<h1 style='text-align: center;'> Bluegill: An Autonomic ML Platform </h1>", unsafe_allow_html=True)
-sl.markdown("<h2 style='text-align: center;'> WBE Science Gateway </h2>", unsafe_allow_html=True)
+# sl.markdown("<h1 style='text-align: center;'> Bluegill: An Autonomic ML Platform </h1>", unsafe_allow_html=True)
+sl.markdown("<h1 style='text-align: center;'> WBE Science Gateway </h1>", unsafe_allow_html=True)
 # sl.markdown("<h3 style='text-align: center;'> Explainable AI: Modeling and Visualization </h1>", unsafe_allow_html=True)
 # sl.markdown("<h5 style='text-align: center;'> Made By Raj Mehta </h5>", unsafe_allow_html=True)
 
 sl.write('---')
 
 sl.markdown("""
-            This app integrates varied data sources, such as HRRR Climatic Data,
-            Sentinel-5P Air Quality Data, and WorldPop Population Data extracted for each
-            Wastewater Treatment Plant (WWTP) region, updated weekly. It allows you to
-            train machine learning models on the features extracted from these datasets
-            to predict COVID-19 N1 concentration levels measured in the WWTP influent.
+            This app integrates Climatic Data, Air Quality Data, and Population Data 
+            extracted for each Wastewater Treatment Plant (WWTP) region, updated weekly.
+            It allows you to train machine learning models on the features extracted from
+            these datasets to predict COVID-19 N1 concentration levels measured by the WWTPs.
             State-of-the-art feature importance tehniques such as SHAP and Boruta are provided
             to help you understand the model's predictions. The COVID-19 N1 concentration levels
             can also be forecasted for the desired number of time-steps in the future using methods

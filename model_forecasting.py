@@ -11,6 +11,7 @@ from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
 import scipy.stats as stats
+# from statsmodels.tsa.arima.model import ARIMA
 
 import numpy as np
 from copy import deepcopy
@@ -358,3 +359,17 @@ def lstm_regression_forecasting(df, test_fraction, random_state, lstm_model=None
     except Exception as e:
         return None, e, None
 
+
+# # --- ARIMA PREDICTION/FORECASTING --- #
+# def arima_regression_forecasting(df, test_fraction, val_fraction, random_state, p_val,
+#                                  d_val, q_val, future_steps):
+#     X, y = df.iloc[:,1:-1], df.iloc[:,-1]
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
+#     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=val_fraction, shuffle=False, random_state=random_state)
+
+#     model = ARIMA(y_train, order=(p_val, d_val, q_val))
+#     model_fit = model.fit()
+
+#     predictions = model_fit.forecast(steps=future_steps)
+
+    
