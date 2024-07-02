@@ -111,7 +111,7 @@ def get_rfe_features(df, _model, model_type, random_state, test_fraction):
 
 # --------------- BORUTA ALGORITHM ---------------- #
     
-@sl.cache_data
+# @sl.cache_data
 def get_boruta_features(df, model_type, random_state, test_fraction, p_val, **kwargs):
     try:
         if (model_type == "Random Forest Classifier") or (model_type == "Random Forest Regressor"):
@@ -332,7 +332,7 @@ def get_regression_time_series_predictions(df, _model, random_state, test_fracti
         ax.set_xlabel("Time Steps")
         ax.set_xticks(x_ticks)
         ax.set_xticklabels(x_ticks, rotation=90)
-        ax.set_title(f"Model's Performance on Predicting {target_name} values \n from Selected Features")
+        ax.set_title(f"Model's Performance on Predicting {target_name} values \n from Selected Features \n")
         
         return fig, None
     except Exception as e:

@@ -7,7 +7,7 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_community.callbacks import StreamlitCallbackHandler
 from langchain_community.chat_models import ChatOpenAI
 
-from data_preprocessing import get_preprocessing_needs_table, plot_data
+from data_preprocessing import get_preprocessing_needs_table, plot_data, plot_data_plotly
 from data_preprocessing import fill_null_values, fix_inconsistent_types, remove_duplicates, remove_outliers, scale_features, fix_class_imbalance, interpolate_data, boxcox_transform, encode_categorical_features, get_correlation_matrix
 
 from model_creation_and_training import create_and_search_tree_classifier, train_final_classifier
@@ -120,9 +120,12 @@ def on_click_search_params():
     if model_type == "Random Forest Classifier":
         # Change this later
         param_distributions = {
-        'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-        'max_depth': [2, 3, 4, 5, 6, 7],
-        'min_child_samples':[3, 5, 7, 9]
+        # 'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+        'n_estimators': [int(x) for x in range(50, 1001)],
+        # 'max_depth': [2, 3, 4, 5, 6, 7],
+        'max_depth': [int(x) for x in range(3, 17)],
+        # 'min_child_samples':[3, 5, 7, 9]
+        'min_child_samples': [int(x) for x in range(1, 51)]
         #'min_data_in_leaf': [3, 5]
         }
 
@@ -134,9 +137,12 @@ def on_click_search_params():
     elif model_type == "Random Forest Regressor":
         # Change this later
         param_distributions = {
-        'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-        'max_depth': [2, 3, 4, 5, 6, 7],
-        'min_child_samples':[3, 5, 7, 9]
+        # 'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+        'n_estimators': [int(x) for x in range(50, 1001)],
+        # 'max_depth': [2, 3, 4, 5, 6, 7],
+        'max_depth': [int(x) for x in range(3, 17)],
+        # 'min_child_samples':[3, 5, 7, 9]
+        'min_child_samples': [int(x) for x in range(1, 51)]
         #'min_data_in_leaf': [3, 5]
         }
 
@@ -226,12 +232,21 @@ def reset_on_change_feat_select():
     sl.session_state.model_on_selected_feats = None
 
 
-def plot_initial_data(plt_col):
-    fig, err_msg = plot_data(sl.session_state.processed_df)
+# def plot_initial_data(plt_col):
+#     fig, err_msg = plot_data(sl.session_state.processed_df)
+#     if fig is None:
+#         plt_col.error(err_msg)
+#     else:
+#         plt_col.write(fig)
+
+def plot_initial_data(p_col):
+    fig, err_msg = plot_data_plotly(sl.session_state.processed_df)
     if fig is None:
-        plt_col.error(err_msg)
+        p_col.error(err_msg)
     else:
-        plt_col.write(fig)
+        # plt_col.write(fig)
+        p_col.markdown("<h4 style='text-align: center;'> Data Visualization </h4>", unsafe_allow_html=True)
+        sl.plotly_chart(fig, use_container_width=True)
 
 
 def remove_null_values_in_data():
