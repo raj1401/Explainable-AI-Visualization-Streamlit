@@ -164,8 +164,10 @@ def on_click_search_params():
     
     elif model_type == "Linear Regression":
         param_distributions = {
-            'linear_regression__alpha': np.arange(0, 10, 0.2),
-            'linear_regression__l1_ratio': np.arange(0, 1, 0.1)
+            # 'linear_regression__alpha': np.arange(0, 10, 0.2),
+            'linear_regression__alpha': np.logspace(-5, 1, 50),
+            # 'linear_regression__l1_ratio': np.arange(0, 1, 0.1)
+            'linear_regression__l1_ratio': np.linspace(0, 1, 50)
         }
 
         with sl.spinner("Searching for Optimum Parameters:"):
@@ -187,9 +189,12 @@ def on_click_search_params():
     
     elif model_type == "KNN Regressor":
         param_distributions = {
-            'knn_regressor__n_neighbors': np.arange(start=2, stop=16, step=2),
-            'knn_regressor__leaf_size': np.arange(start=15, stop=60, step=15),
-            'knn_regressor__p': np.arange(start=1, stop=2, step=0.1)
+            # 'knn_regressor__n_neighbors': np.arange(start=2, stop=16, step=2),
+            'knn_regressor__n_neighbors': range(1, 51),
+            # 'knn_regressor__leaf_size': np.arange(start=15, stop=60, step=15),
+            'knn_regressor__leaf_size': range(10, 101, 10),
+            # 'knn_regressor__p': np.arange(start=1, stop=2, step=0.1)
+            'knn_regressor__p': [1, 1.5, 2]
         }
 
         with sl.spinner("Searching for Optimum Parameters:"):
@@ -488,7 +493,7 @@ def train_model_on_selected_feats():
     elif model_type == "KNN Classifier":
         model, _, _ = train_final_KNN_classifier(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
         sl.session_state.model_on_selected_feats = model
-    elif model_type == "KNN Regresor":
+    elif model_type == "KNN Regressor":
         model, _, _ = train_final_KNN_regressor(df=sl.session_state.feats_selected_df, param_distributions=sl.session_state.final_params)
         sl.session_state.model_on_selected_feats = model
     elif model_type == "SVM Classifier":
@@ -935,8 +940,7 @@ with sl.container():
             if len(feature_selection_algorithms) != 0:
                 sl.markdown("""<h4 style='text-align: center;'> Select the most important features that
                     you want to retain in the data based on the above Graphs </h4>""", unsafe_allow_html=True)
-                new_features = sl.multiselect("Features", options=sl.session_state.independent_feats, on_change=trigger_training_on_selected_features)
-                
+                new_features = sl.multiselect("Features", options=sl.session_state.independent_feats)
                 if len(new_features) != 0:
                     sl.session_state.feats_selected_df = create_ordered_dataframe(sl.session_state.processed_df, sl.session_state.time_col, 
                                                                                   new_features, sl.session_state.target_var)
@@ -945,9 +949,10 @@ with sl.container():
                 else:
                     sl.session_state.feats_selected_df = None
 
-                if sl.session_state.trigger_training_on_new_feats and len(new_features) != 0:
-                    train_model_on_selected_feats()
-                    sl.session_state.trigger_training_on_new_feats = False
+                if len(new_features) != 0:
+                    if sl.button("Train Model on Selected Features"):
+                        train_model_on_selected_feats()
+                        sl.session_state.trigger_training_on_new_feats = False
         else:
             sl.session_state.feats_selected_df = sl.session_state.dataframe
             sl.session_state.model_on_selected_feats = sl.session_state.final_model
