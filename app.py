@@ -438,6 +438,7 @@ def train_final_model():
     
     elif model_type == "Logistic Regression":
         final_model, rand_state, test_fraction = train_final_logistic_regression(df=sl.session_state.processed_df, param_distributions=sl.session_state.final_params)
+        print("final", sl.session_state.processed_df.isnull().sum())
         sl.session_state.final_model = final_model
         sl.session_state.TRAIN_TEST_RANDOM_STATE = rand_state
         sl.session_state.TEST_FRACTION = test_fraction
@@ -951,10 +952,11 @@ with sl.container():
 
                 if len(new_features) != 0:
                     if sl.button("Train Model on Selected Features"):
+                        sl.session_state.model_on_selected_feats = None
                         train_model_on_selected_feats()
                         sl.session_state.trigger_training_on_new_feats = False
         else:
-            sl.session_state.feats_selected_df = sl.session_state.dataframe
+            sl.session_state.feats_selected_df = sl.session_state.processed_df
             sl.session_state.model_on_selected_feats = sl.session_state.final_model
 
         # sl.markdown("<h2 style='text-align: center;'> Feature Selection </h2>", unsafe_allow_html=True)

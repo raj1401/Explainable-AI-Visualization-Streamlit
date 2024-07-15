@@ -17,6 +17,7 @@ def detect_null_values(df: pd.DataFrame):
     missing_values = df.isnull().sum()
     total_cells = np.product(df.shape)
     total_missing = missing_values.sum()
+    print(missing_values)
     return (total_missing / total_cells) * 100
 
 
@@ -197,6 +198,10 @@ def get_preprocessing_needs_table(df):
 
 
 def fill_null_values(df: pd.DataFrame):
+    # Use bfill
+    df = df.fillna(method='bfill')
+    # Use ffill
+    df = df.fillna(method='ffill')
     # Fill null values in each column with linear interpolation
     df = df.interpolate(method='linear', axis=0)
     return df
