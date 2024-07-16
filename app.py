@@ -90,6 +90,9 @@ if 'processed_df' not in sl.session_state:
 if 'feats_selected_df' not in sl.session_state:
     sl.session_state.feats_selected_df = None
 
+if 'shap_values' not in sl.session_state:
+    sl.session_state.shap_values = None
+
 if 'final_model' not in sl.session_state:
     sl.session_state.final_model = None
 
@@ -231,6 +234,7 @@ def reset_params():
     sl.session_state.model_on_selected_feats = None
     sl.session_state.TRAIN_TEST_RANDOM_STATE = None
     sl.session_state.TEST_FRACTION = None
+    sl.session_state.shape_values = None
 
 def reset_on_change_feat_select():
     sl.session_state.feats_selected_df = None
@@ -602,44 +606,77 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
                                                  shuffle=False, random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE)
     
     if model_type in ["Random Forest Classifier", "Random Forest Regressor"]:
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X_test)
+        if sl.session_state.shap_values is not None:
+            shap_values = sl.session_state.shap_values
+        else:
+            explainer = shap.Explainer(model)
+            shap_values = explainer(X_test)
+            sl.session_state.shap_values = shap_values
     elif model_type == "Logistic Regression":
-        back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
-        explainer = shap.Explainer(model.named_steps['logistic_regression'], back_dist)
-        shap_values = explainer(X_test)
+        if sl.session_state.shap_values is not None:
+            shap_values = sl.session_state.shap_values
+        else:
+            back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
+            explainer = shap.Explainer(model.named_steps['logistic_regression'], back_dist)
+            shap_values = explainer(X_test)
+            sl.session_state.shap_values = shap_values
     elif model_type == "Linear Regression":
-        back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
-        explainer = shap.Explainer(model.named_steps['linear_regression'], back_dist)
-        shap_values = explainer(X_test)
+        if sl.session_state.shap_values is not None:
+            shap_values = sl.session_state.shap_values
+        else:
+            back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
+            explainer = shap.Explainer(model.named_steps['linear_regression'], back_dist)
+            shap_values = explainer(X_test)
+            sl.session_state.shap_values = shap_values
     elif model_type == "KNN Classifier":
-        # back_dist = X_train.median().values.reshape((1, X_train.shape[1]))
-        back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
-        explainer = shap.KernelExplainer(model.named_steps['knn_classifier'].predict, back_dist)
-        shap_values = explainer.shap_values(X_test)
-        base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
-        shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+        if sl.session_state.shap_values is not None:
+            shap_values = sl.session_state.shap_values
+        else:
+            def f(x):
+                return model.named_steps['knn_classifier'].predict_proba(x)[:, 1]
+            med = X_train.median().values.reshape((1, X_train.shape[1]))
+            explainer = shap.Explainer(f, med)
+            shap_values = explainer(X_test)
+            sl.session_state.shap_values = shap_values
+        # # back_dist = X_train.median().values.reshape((1, X_train.shape[1]))
+        # back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train.iloc[:,0]))))
+        # explainer = shap.KernelExplainer(model.named_steps['knn_classifier'].predict_proba, back_dist)
+        # shap_values = explainer.shap_values(X_test)
+        # base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
+        # shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
     elif model_type == "KNN Regressor":
+        if sl.session_state.shap_values is not None:
+            shap_values = sl.session_state.shap_values
+        else:
         # back_dist = X_train.median().values.reshape((1, X_train.shape[1]))
-        back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
-        explainer = shap.KernelExplainer(model.named_steps['knn_regressor'].predict, back_dist)
-        shap_values = explainer.shap_values(X_test)
-        base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
-        shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train.iloc[:,0]))))
+            explainer = shap.KernelExplainer(model.named_steps['knn_regressor'].predict, back_dist)
+            shap_values = explainer.shap_values(X_test)
+            base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
+            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+            sl.session_state.shap_values = shap_values
     elif model_type == "SVM Classifier":
-        back_dist = shap.utils.sample(X_train, int(0.05*len(X_train.iloc[:,0])))
-        # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
-        explainer = shap.KernelExplainer(model.named_steps['svm_classifier'].predict, back_dist)
-        shap_values = explainer.shap_values(X_test)
-        base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
-        shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+        if sl.session_state.shap_values is not None:
+            shap_values = sl.session_state.shap_values
+        else:
+            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train.iloc[:,0]))))
+            # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
+            explainer = shap.KernelExplainer(model.named_steps['svm_classifier'].predict, back_dist)
+            shap_values = explainer.shap_values(X_test)
+            base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
+            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+            sl.session_state.shap_values = shap_values
     elif model_type == "SVM Regressor":
-        back_dist = shap.utils.sample(X_train, int(0.05*len(X_train.iloc[:,0])))
-        # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
-        explainer = shap.KernelExplainer(model.named_steps['svm_regressor'].predict, back_dist)
-        shap_values = explainer.shap_values(X_test)
-        base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
-        shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+        if sl.session_state.shap_values is not None:
+            shap_values = sl.session_state.shap_values
+        else:
+            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train.iloc[:,0]))))
+            # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
+            explainer = shap.KernelExplainer(model.named_steps['svm_regressor'].predict, back_dist)
+            shap_values = explainer.shap_values(X_test)
+            base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
+            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+            sl.session_state.shap_values = shap_values
 
     print(shap_values)
     # Bar Plot
@@ -941,7 +978,7 @@ with sl.container():
             if len(feature_selection_algorithms) != 0:
                 sl.markdown("""<h4 style='text-align: center;'> Select the most important features that
                     you want to retain in the data based on the above Graphs </h4>""", unsafe_allow_html=True)
-                new_features = sl.multiselect("Features", options=sl.session_state.independent_feats)
+                new_features = sl.multiselect("Features", options=sl.session_state.independent_feats, on_change=reset_on_change_feat_select)
                 if len(new_features) != 0:
                     sl.session_state.feats_selected_df = create_ordered_dataframe(sl.session_state.processed_df, sl.session_state.time_col, 
                                                                                   new_features, sl.session_state.target_var)

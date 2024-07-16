@@ -158,7 +158,7 @@ def get_boruta_features(df, model_type, random_state, test_fraction, p_val, **kw
 
 # --------------- CLASSIFIER PLOTS ---------------- #
 
-@sl.cache_data
+# @sl.cache_data
 def plot_precision_recall(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
@@ -174,7 +174,7 @@ def plot_precision_recall(df, _model, random_state, test_fraction):
         return None, e
 
 
-@sl.cache_data
+# @sl.cache_data
 def plot_roc_auc(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
@@ -190,7 +190,7 @@ def plot_roc_auc(df, _model, random_state, test_fraction):
         return None, e
 
 
-@sl.cache_data
+# @sl.cache_data
 def plot_confusion_matrix(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
@@ -207,7 +207,7 @@ def plot_confusion_matrix(df, _model, random_state, test_fraction):
         return None, e
 
 
-@sl.cache_data
+# @sl.cache_data
 def get_classification_time_series_predictions(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
@@ -248,7 +248,7 @@ def get_classification_time_series_predictions(df, _model, random_state, test_fr
 
 # ------------ REGRRESSOR PLOTS ------------- #
 
-@sl.cache_data
+# @sl.cache_data
 def plot_prediction_error(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
@@ -263,7 +263,7 @@ def plot_prediction_error(df, _model, random_state, test_fraction):
         return None, e
 
 
-@sl.cache_data
+# @sl.cache_data
 def get_regression_metrics(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
@@ -284,7 +284,7 @@ def get_regression_metrics(df, _model, random_state, test_fraction):
         return None, None, None, e
 
 
-@sl.cache_data
+# @sl.cache_data
 def get_regression_time_series_predictions(df, _model, random_state, test_fraction):
     try:    
         dates = df.iloc[:,0].astype(str)
@@ -325,7 +325,7 @@ def get_regression_time_series_predictions(df, _model, random_state, test_fracti
         ax.text(0.15*len(y), y_max + 0.075*(y_max-y_min), 'Training and Validation Set', verticalalignment='center', fontsize=12)
         ax.text(0.85*len(y), y_max + 0.075*(y_max-y_min), 'Testing Set', verticalalignment='center', fontsize=12)
 
-        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.05))
+        ax.legend(loc="upper right", bbox_to_anchor=(1.4, 1.05))
         
         #ax.set_ylim(bottom=y_min - 0.1*(y_max-y_min), top=y_max + 0.5*(y_max-y_min))
         ax.set_ylabel(target_name)
