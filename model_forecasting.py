@@ -88,6 +88,19 @@ def forecast_from_regressor(_model, data_file):
 
 # ----------- LSTM PREDICTION/FORECASTING ------------- #
 
+# Getting the device
+# DEVICE = (
+#     "cuda"
+#     if torch.cuda.is_available()
+#     else "mps"
+#     if torch.backends.mps.is_available()
+#     else "cpu"
+# )
+
+DEVICE = "cpu"  # Forcing to use CPU
+
+print(f"Using {DEVICE} device")
+
 def get_dataloader_single(df, val_fraction, batch_size, lookback, test_fraction, random_state):
     X, y = df.iloc[:,1:-1], df.iloc[:,-1]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_fraction, shuffle=False, random_state=random_state)
@@ -200,8 +213,8 @@ def predict_from_LSTM(model:myLSTM, initial_data, future_steps):
 
     with torch.no_grad():
         for _ in range(future_steps):
-            scaled_data = torch.Tensor(np.array(outputs).reshape(-1,1))
-            pred = model(scaled_data)
+            scaled_data = torch.Tensor(np.array(outputs).reshape(-1,1)).to(DEVICE)
+            pred = model(scaled_data).cpu().numpy()
             outputs.append(pred[-1,0])
 
     rescaled_data = scaler.inverse_transform(np.array(outputs).reshape(-1,1))
@@ -213,16 +226,6 @@ def train_LSTM_regressor(df, y_list, from_df, val_fraction, batch_size, lookback
                          hidden_size, num_layers, output_size, num_epochs, learning_rate,
                          test_fraction, random_state):
     
-    # Getting the device
-    device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
-
-    print(f"Using {device} device")
 
     if from_df:
         train_dataloader, val_dataloader = get_dataloader_single(df, val_fraction, batch_size, lookback,
@@ -236,19 +239,18 @@ def train_LSTM_regressor(df, y_list, from_df, val_fraction, batch_size, lookback
     # learning_rate = 0.001
     # num_epochs = 100
 
-    model = myLSTM(input_size, hidden_size, num_layers, output_size)
+    model = myLSTM(input_size, hidden_size, num_layers, output_size).to(DEVICE)
 
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     best_model_state = None
     best_val_loss = float('inf')
-
     for epoch in range(num_epochs):
         print(f"Epoch {epoch+1} \n ----------------------------")
 
-        train(train_dataloader, model, criterion, optimizer, device)
-        val_loss = validate(val_dataloader, model, criterion, device)
+        train(train_dataloader, model, criterion, optimizer, DEVICE)
+        val_loss = validate(val_dataloader, model, criterion, DEVICE)
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_model_state = deepcopy(model.state_dict())

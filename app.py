@@ -234,7 +234,7 @@ def reset_params():
     sl.session_state.model_on_selected_feats = None
     sl.session_state.TRAIN_TEST_RANDOM_STATE = None
     sl.session_state.TEST_FRACTION = None
-    sl.session_state.shape_values = None
+    sl.session_state.shap_values = None
 
 def reset_on_change_feat_select():
     sl.session_state.feats_selected_df = None
@@ -601,9 +601,11 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
     if model_type in sl.session_state.classification_models:
         X_train, X_test, _, _ = train_test_split(df.iloc[:,1:-1], df.iloc[:,-1], test_size=sl.session_state.TEST_FRACTION, 
                                                  shuffle=True, stratify=df.iloc[:,-1], random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE)
+        feat_names = X_test.columns
     else:
         X_train, X_test, _, _ = train_test_split(df.iloc[:,1:-1], df.iloc[:,-1], test_size=sl.session_state.TEST_FRACTION, 
                                                  shuffle=False, random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE)
+        feat_names = X_test.columns
     
     if model_type in ["Random Forest Classifier", "Random Forest Regressor"]:
         if sl.session_state.shap_values is not None:
@@ -616,7 +618,11 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
         if sl.session_state.shap_values is not None:
             shap_values = sl.session_state.shap_values
         else:
-            back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
+            from sklearn.preprocessing import StandardScaler
+            scaler = StandardScaler()
+            X_train = scaler.fit_transform(X_train)
+            X_test.iloc[:, :] = scaler.transform(X_test)
+            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train[:,0]))))
             explainer = shap.Explainer(model.named_steps['logistic_regression'], back_dist)
             shap_values = explainer(X_test)
             sl.session_state.shap_values = shap_values
@@ -624,7 +630,11 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
         if sl.session_state.shap_values is not None:
             shap_values = sl.session_state.shap_values
         else:
-            back_dist = shap.utils.sample(X_train, int(0.1*len(X_train.iloc[:,0])))
+            from sklearn.preprocessing import StandardScaler
+            scaler = StandardScaler()
+            X_train = scaler.fit_transform(X_train)
+            X_test.iloc[:, :] = scaler.transform(X_test)
+            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train[:,0]))))
             explainer = shap.Explainer(model.named_steps['linear_regression'], back_dist)
             shap_values = explainer(X_test)
             sl.session_state.shap_values = shap_values
@@ -632,57 +642,66 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
         if sl.session_state.shap_values is not None:
             shap_values = sl.session_state.shap_values
         else:
-            def f(x):
-                return model.named_steps['knn_classifier'].predict_proba(x)[:, 1]
-            med = X_train.median().values.reshape((1, X_train.shape[1]))
-            explainer = shap.Explainer(f, med)
-            shap_values = explainer(X_test)
+            from sklearn.preprocessing import StandardScaler
+            scaler = StandardScaler()
+            X_train = scaler.fit_transform(X_train)
+            X_test = scaler.transform(X_test)
+            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train[:,0]))))
+            explainer = shap.KernelExplainer(model.named_steps['knn_classifier'].predict, back_dist)
+            shap_values = explainer.shap_values(X_test)
+            base_values = np.array([explainer.expected_value] * len(X_test[:,0]))
+            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test, feature_names=feat_names)
             sl.session_state.shap_values = shap_values
-        # # back_dist = X_train.median().values.reshape((1, X_train.shape[1]))
-        # back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train.iloc[:,0]))))
-        # explainer = shap.KernelExplainer(model.named_steps['knn_classifier'].predict_proba, back_dist)
-        # shap_values = explainer.shap_values(X_test)
-        # base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
-        # shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
     elif model_type == "KNN Regressor":
         if sl.session_state.shap_values is not None:
             shap_values = sl.session_state.shap_values
         else:
-        # back_dist = X_train.median().values.reshape((1, X_train.shape[1]))
-            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train.iloc[:,0]))))
+            from sklearn.preprocessing import StandardScaler
+            scaler = StandardScaler()
+            X_train = scaler.fit_transform(X_train)
+            X_test = scaler.transform(X_test)
+            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train[:,0]))))
             explainer = shap.KernelExplainer(model.named_steps['knn_regressor'].predict, back_dist)
             shap_values = explainer.shap_values(X_test)
-            base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
-            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+            base_values = np.array([explainer.expected_value] * len(X_test[:,0]))
+            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test, feature_names=feat_names)
             sl.session_state.shap_values = shap_values
     elif model_type == "SVM Classifier":
         if sl.session_state.shap_values is not None:
             shap_values = sl.session_state.shap_values
         else:
-            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train.iloc[:,0]))))
+            from sklearn.preprocessing import StandardScaler
+            scaler = StandardScaler()
+            X_train = scaler.fit_transform(X_train)
+            X_test = scaler.transform(X_test)
+            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train[:,0]))))
             # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
             explainer = shap.KernelExplainer(model.named_steps['svm_classifier'].predict, back_dist)
             shap_values = explainer.shap_values(X_test)
-            base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
-            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+            base_values = np.array([explainer.expected_value] * len(X_test[:,0]))
+            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test, feature_names=feat_names)
             sl.session_state.shap_values = shap_values
     elif model_type == "SVM Regressor":
         if sl.session_state.shap_values is not None:
             shap_values = sl.session_state.shap_values
         else:
-            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train.iloc[:,0]))))
+            from sklearn.preprocessing import StandardScaler
+            scaler = StandardScaler()
+            X_train = scaler.fit_transform(X_train)
+            X_test = scaler.transform(X_test)
+            back_dist = shap.utils.sample(X_train, min(30, int(0.1*len(X_train[:,0]))))
             # explainer = shap.Explainer(model.named_steps['svm_classifier'], back_dist)
             explainer = shap.KernelExplainer(model.named_steps['svm_regressor'].predict, back_dist)
             shap_values = explainer.shap_values(X_test)
-            base_values = np.array([explainer.expected_value] * len(X_test.iloc[:,0]))
-            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test.to_numpy(), feature_names=X_test.columns)
+            base_values = np.array([explainer.expected_value] * len(X_test[:,0]))
+            shap_values = shap.Explanation(values=shap_values, base_values=base_values, data=X_test, feature_names=feat_names)
             sl.session_state.shap_values = shap_values
 
     print(shap_values)
     # Bar Plot
     with left_col:
         left_col.markdown("<h4 style='text-align: center;'> Bar </h4>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_bar(shap_values, max_display=len(X_test.columns))
+        fig, err_msg = plot_shap_bar(shap_values, max_display=len(feat_names))
         if fig is None:
             left_col.error(err_msg)
         else:
@@ -691,7 +710,7 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
     # Beeswarm Plot
     with middle_col:
         middle_col.markdown("<h4 style='text-align: center;'> Beeswarm </h4>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_beeswarm(shap_values, max_display=len(X_test.columns))
+        fig, err_msg = plot_shap_beeswarm(shap_values, max_display=len(feat_names))
         if fig is None:
             middle_col.error(err_msg)
         else:
@@ -700,7 +719,7 @@ def plot_shap_graphs(left_col, middle_col, right_col, df, model):
     # Heatmap
     with right_col:
         right_col.markdown("<h4 style='text-align: center;'> Heatmap </h4>", unsafe_allow_html=True)
-        fig, err_msg = plot_shap_heatmap(shap_values, max_display=len(X_test.columns))
+        fig, err_msg = plot_shap_heatmap(shap_values, max_display=len(feat_names))
         if fig is None:
             right_col.error(err_msg)
         else:
@@ -777,16 +796,21 @@ def plot_forecasts(new_data, left_col, right_col):
 
 def plot_lstm_forecasts_single(input_data_file, future_steps, plot_col, batch_size, lookback, hidden_size, num_layers):
     input_df = data_file_loader(input_data_file, temp_dir=TEMP_DIR)
-    fig, err_msg, trained_lstm = lstm_regression_forecasting(df=input_df, test_fraction=sl.session_state.TEST_FRACTION,
-                                                            random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, from_df=True,
-                                                            future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model,
-                                                            batch_size=batch_size, lookback=lookback, hidden_size=hidden_size,
-                                                            num_layers=num_layers)
-    sl.session_state.LSTM_Model = trained_lstm
-    if fig is None:
-        plot_col.write(err_msg)
-    else:
-        plot_col.write(fig)
+    time_name = sl.selectbox("Time Column", options=input_df.columns, on_change=reset_lstm_model)
+    forecast_var = sl.selectbox("Forecast Variable", options=input_df.columns, on_change=reset_lstm_model)
+
+    if sl.button("Train LSTM Model"):
+        input_df = input_df[[time_name, forecast_var]]
+        fig, err_msg, trained_lstm = lstm_regression_forecasting(df=input_df, test_fraction=sl.session_state.TEST_FRACTION,
+                                                                random_state=sl.session_state.TRAIN_TEST_RANDOM_STATE, from_df=True,
+                                                                future_steps=future_steps, lstm_model=sl.session_state.LSTM_Model,
+                                                                batch_size=batch_size, lookback=lookback, hidden_size=hidden_size,
+                                                                num_layers=num_layers)
+        sl.session_state.LSTM_Model = trained_lstm
+        if fig is None:
+            plot_col.write(err_msg)
+        else:
+            plot_col.write(fig)
 
 
 def plot_lstm_forecasts_multiple(input_data_file, future_steps, plot_col, batch_size, hidden_size, num_layers):
@@ -1075,6 +1099,7 @@ with sl.container():
             if input_type == "Single DataFrame":
                 lookback = col4.number_input("Window Size", min_value=1, step=1, on_change=reset_lstm_model)
                 single_df_data = sl.file_uploader("Single DataFrame", type="csv")
+
                 if single_df_data is not None:
                     _, plot_col, _ = sl.columns((1,4,1))
                     # sl.session_state.LSTM_plot_col = plot_col
